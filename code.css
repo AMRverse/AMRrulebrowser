@@ -1,0 +1,260 @@
+body {
+    font-family: sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 20px;
+    background-color: #f4f4f4;
+    color: #333;
+}
+
+.container {
+    max-width: 900px; /* Adjusted for potentially wider tables */
+    margin: auto;
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+@media (min-width: 1200px) { /* Allow wider container for larger screens */
+    .container {
+        max-width: 1100px;
+    }
+}
+@media (min-width: 1600px) {
+    .container {
+        max-width: 1500px;
+    }
+}
+
+
+.header-section {
+    display: flex;
+    align-items: center; /* Vertically align items in the center */
+    margin-bottom: 20px; /* Space below the header */
+}
+
+#logo {
+    height: 100px; /* Adjust as needed */
+    width: auto; /* Maintain aspect ratio */
+    margin-right: 15px; /* Space between logo and title */
+}
+
+h1, h2, h3 {
+    color: #9500b3;
+    margin-top: 0; 
+    margin-bottom: 0.5em; /* Added some bottom margin for h2/h3 */
+}
+h1 {
+    margin-bottom: 0;
+}
+
+
+.controls, .search-section, .browse-section, .status, .mode-selection {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    margin-top: 10px; 
+}
+
+input[type="file"], input[type="text"], select {
+    padding: 8px;
+    margin-right: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: calc(100% - 22px); 
+    box-sizing: border-box;
+    margin-bottom: 10px;
+}
+
+input[type="file"] {
+    width: auto; 
+}
+/* Specific width for dropdowns if needed */
+/* Removed empty ruleset for #columnSelect, #browseFileSelect */
+
+
+#searchResults {
+    max-height: 600px; /* Increased height */
+    overflow-y: auto;  
+    overflow-x: auto;  
+    margin-top: 10px;  
+    padding-right: 1px; 
+    border: 1px solid #ddd; /* Added border for clarity */
+}
+
+button {
+    padding: 10px 15px;
+    background-color: #9500b3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 5px; 
+    margin-right: 5px;
+}
+
+button:hover {
+    background-color: #7a0091; /* Darker hover */
+}
+
+#clearButton {
+    background-color: #dd8fc7;
+}
+
+#clearButton:hover {
+    background-color: #c86ba5; /* Darker hover for clear */
+}
+
+#loadedFilesList {
+    list-style: disc;
+    padding-left: 20px;
+    max-height: 100px; /* Limit height for loaded files list */
+    overflow-y: auto;
+    border: 1px solid #eee;
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+
+#loadedFilesList li {
+    margin-bottom: 5px;
+}
+
+/* Results item styling - might not be used if table view is primary */
+.result-item {
+    border: 1px solid #e0e0e0;
+    padding: 10px;
+    margin-bottom: 10px;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+}
+
+.result-item strong {
+    color: #007bff;
+}
+
+.result-item pre {
+    white-space: pre-wrap; 
+    word-wrap: break-word; 
+    background-color: #eee;
+    padding: 8px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 0.9em;
+    overflow-x: auto; 
+}
+
+.highlight { /* For search term highlighting if implemented later */
+    background-color: yellow;
+    font-weight: bold;
+}
+
+#resultsCount {
+    margin-bottom: 10px;
+    font-style: italic;
+}
+
+.download-buttons {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+}
+
+.download-buttons button:disabled {
+    background-color: #c7b2ce; /* Adjusted disabled color */
+    color: #777;
+    cursor: not-allowed;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em; /* Slightly smaller font for tables */
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 6px; /* Adjusted padding */
+    text-align: left;
+    white-space: nowrap; /* Prevent text wrapping in cells by default */
+}
+
+td {
+    max-width: 300px; /* Limit cell width */
+    overflow: hidden;
+    text-overflow: ellipsis; /* Add ellipsis for overflowed content */
+}
+
+td:hover { /* Show full content on hover */
+    white-space: normal;
+    overflow: visible;
+    max-width: none;
+}
+
+
+th {
+    background-color: #e9d8ed; /* Lighter purple for headers */
+    color: #333;
+    position: sticky; /* Make headers sticky */
+    top: 0; /* Stick to the top of the scrollable container */
+    z-index: 10;
+    cursor: pointer; 
+}
+
+/* Sort arrow styling */
+th .sort-arrow {
+    font-size: 0.8em;
+    margin-left: 5px;
+    color: #555;
+}
+
+/* Style for current sort column */
+th.sorted-asc, th.sorted-desc {
+    background-color: #d5b9dd; /* Slightly darker to indicate active sort */
+}
+
+/* Hide all sort arrows by default */
+.sort-arrow {
+    visibility: hidden; /* Initially hidden, shown by JS */
+    display: inline-block; /* Ensure it takes space */
+}
+
+/* Show arrow for the currently sorted column */
+th.sorted-asc .sort-arrow,
+th.sorted-desc .sort-arrow {
+    visibility: visible;
+}
+
+
+tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+tr:hover {
+    background-color: #f1e8f3; /* Lighter purple hover for rows */
+}
+/* Basic responsiveness for smaller screens */
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+    }
+    input[type="text"], select {
+        width: 100%; 
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
+    .header-section {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    #logo {
+        margin-bottom: 10px;
+    }
+    th, td {
+        white-space: normal; /* Allow wrapping on small screens */
+         font-size: 0.8em;
+    }
+}
