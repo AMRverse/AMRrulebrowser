@@ -17,24 +17,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const browseControlsSection = document.getElementById('browseControlsSection');
     const searchControlsSection = document.getElementById('searchControlsSection');
     const browseFileSelect = document.getElementById('browseFileSelect');
+    const browseSearchInput = document.getElementById('browseSearchInput');
+    const browseSearchButton = document.getElementById('browseSearchButton');
+    const browseSearchClearButton = document.getElementById('browseSearchClearButton');
     const resultsHeader = document.getElementById('resultsHeader');
 
     // --- Constants ---
     const LOCAL_STORAGE_KEY = 'localTxtFileData_v2';
-    const DEFAULT_FILES = [
-        './data/Yersinia.txt',
-        './data/Staphylococcus_aureus.txt',
-        './data/Salmonella.txt',
-        './data/Klebsiella_pneumoniae.txt', 
-        './data/Escherichia_coli.txt',
-        './data/Streptococcus_pneumoniae.txt',
-        './data/Pseudomonas_aeruginosa.txt',
-        './data/Enterococcus_faecium.txt',
-        './data/Enterococcus_faecalis.txt', 
-        './data/Neisseria_gonorrhoeae.txt',
-        './data/Enterobacter.txt',
-        './data/Acinetobacter_baumannii.txt'
-    ];
+    const GITHUB_REPO = 'AMRverse/AMRrules';
+    const GITHUB_BRANCH = 'genome_summary_report_dev';
+    const GITHUB_RULES_PATH = 'rules';
+    const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_RULES_PATH}?ref=${GITHUB_BRANCH}`;
+    const GITHUB_RAW_URL = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/${GITHUB_RULES_PATH}`;
+    let DEFAULT_FILES = []; // Will be populated dynamically
     const FIXED_HEADER_ORDER = [
         'ruleID', 'txid', 'organism', 'gene', 'nodeID', 'protein accession',
         'HMM accession', 'nucleotide accession', 'ARO accession',
@@ -58,9 +53,39 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentHeadersForDisplay = [];
     let sortColumnKey = '';
     let sortDirection = 'asc';
+    let originalBrowseData = []; // Track original browse data before filtering
 
     // --- Initialization ---
     initializeApplication();
+
+    // --- Helper Functions for GitHub File Fetching ---
+    async function fetchDefaultFilesFromGitHub() {
+        try {
+            const response = await fetch(GITHUB_API_URL);
+            if (!response.ok) throw new Error(`GitHub API error: ${response.statusText}`);
+            const files = await response.json();
+            
+            // Filter for .txt files and build URLs
+            DEFAULT_FILES = files
+                .filter(file => file.name.endsWith('.txt'))
+                .map(file => ({
+                    name: file.name,
+                    url: `${GITHUB_RAW_URL}/${file.name}`
+                }));
+            
+            console.log(`Found ${DEFAULT_FILES.length} txt files from GitHub repository`);
+            return DEFAULT_FILES;
+        } catch (error) {
+            console.error("Error fetching file list from GitHub:", error);
+            alert("Could not fetch file list from GitHub repository. Check console for details.");
+            return [];
+        }
+    }
+
+    // Helper function to format file names (remove .txt and replace _ with space)
+    function formatFileName(fileName) {
+        return fileName.replace(/\.txt$/, '').replace(/_/g, ' ');
+    }
 
     // --- Event Listeners ---
     loadButton.addEventListener('click', () => {
@@ -84,6 +109,12 @@ document.addEventListener('DOMContentLoaded', () => {
     searchModeRadio.addEventListener('change', handleModeChange);
     browseFileSelect.addEventListener('change', triggerBrowse);
 
+    browseSearchButton.addEventListener('click', performBrowseSearch);
+    browseSearchInput.addEventListener('keyup', (event) => {
+        if (event.key === 'Enter') performBrowseSearch();
+    });
+    browseSearchClearButton.addEventListener('click', clearBrowseSearch);
+
     searchButton.addEventListener('click', performSearch);
     searchInput.addEventListener('keyup', (event) => {
         if (event.key === 'Enter') performSearch();
@@ -95,33 +126,46 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Core Functions ---
     async function initializeApplication() {
         let storedData = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY)) || {};
-        const defaultFileNamesInStorage = DEFAULT_FILES.filter(df => storedData[df]);
-        const defaultFilesToFetch = DEFAULT_FILES.filter(df => !storedData[df]);
+        
+        // First, fetch the list of available files from GitHub
+        resultsCountDiv.textContent = `Fetching file list from GitHub repository...`;
+        const defaultFilesFromGitHub = await fetchDefaultFilesFromGitHub();
+        
+        if (defaultFilesFromGitHub.length === 0) {
+            resultsCountDiv.textContent = "Error: Could not fetch files from GitHub.";
+            updateUIAfterDataLoad(storedData);
+            handleModeChange();
+            return;
+        }
+        
+        // Check which files are already stored
+        const defaultFileNamesInStorage = defaultFilesFromGitHub.filter(df => storedData[df.name]);
+        const defaultFilesToFetch = defaultFilesFromGitHub.filter(df => !storedData[df.name]);
 
         if (defaultFilesToFetch.length > 0) {
-            resultsCountDiv.textContent = `Loading ${defaultFilesToFetch.length} default file(s)...`;
+            resultsCountDiv.textContent = `Loading ${defaultFilesToFetch.length} default file(s) from GitHub...`;
             try {
-                await Promise.all(defaultFilesToFetch.map(async (fileName) => {
-                    const response = await fetch(fileName); // Assumes files are in the same directory
-                    if (!response.ok) throw new Error(`Failed to fetch ${fileName}: ${response.statusText}`);
+                await Promise.all(defaultFilesToFetch.map(async (fileObj) => {
+                    const response = await fetch(fileObj.url);
+                    if (!response.ok) throw new Error(`Failed to fetch ${fileObj.name}: ${response.statusText}`);
                     const content = await response.text();
                     const parsed = parseTSV(content);
-                    storedData[fileName] = {
-                        name: fileName,
+                    storedData[fileObj.name] = {
+                        name: fileObj.name,
                         content: content, // Store raw content
                         headerLineIndex: parsed.headerLineIndex,
                         headers: parsed.headers,
                         rows: parsed.rows,
-                        type: 'text/plain', // Assuming
+                        type: 'text/plain',
                         lastModified: new Date().toLocaleDateString() // Placeholder
                     };
                 }));
                 localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(storedData));
-                resultsCountDiv.textContent = `Default files loaded. ${defaultFileNamesInStorage.length > 0 ? (defaultFileNamesInStorage.length + ' previously loaded default files also available.') : ''}`;
+                resultsCountDiv.textContent = `Loaded ${defaultFilesToFetch.length} file(s) from GitHub. ${defaultFileNamesInStorage.length > 0 ? (defaultFileNamesInStorage.length + ' previously loaded files also available.') : ''}`;
             } catch (error) {
-                console.error("Error loading default files:", error);
-                alert("Could not load some default files. Ensure they are in the same directory as index.html. Check console for details.");
-                resultsCountDiv.textContent = "Error loading default files.";
+                console.error("Error loading default files from GitHub:", error);
+                alert("Could not load some files from GitHub. Check console for details.");
+                resultsCountDiv.textContent = "Error loading files from GitHub.";
             }
         } else if (Object.keys(storedData).length > 0) {
              resultsCountDiv.textContent = "Loaded data from previous session.";
@@ -246,7 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (fileData && fileData.headers) fileData.headers.forEach(h => distinctHeaders.add(h));
             });
         } else if (storedData[selectedFileName] && storedData[selectedFileName].rows) {
-            resultsHeader.textContent = `Browsing: ${selectedFileName}`;
+            resultsHeader.textContent = `Browsing: ${formatFileName(selectedFileName)}`;
             dataToBrowse = storedData[selectedFileName].rows;
             if (storedData[selectedFileName].headers) {
                 storedData[selectedFileName].headers.forEach(h => distinctHeaders.add(h));
@@ -258,12 +302,50 @@ document.addEventListener('DOMContentLoaded', () => {
             currentHeadersForDisplay = Array.from(distinctHeaders).sort();
         }
         
+        originalBrowseData = dataToBrowse;
         currentDataForDisplayAndDownload = dataToBrowse;
+        browseSearchInput.value = ''; // Clear browse search input when switching organisms
         sortColumnKey = ''; // Reset sort when browsing new data
         sortDirection = 'asc';
         sortAndDisplayData(); 
         resultsCountDiv.textContent = `Displaying ${dataToBrowse.length} row(s).`;
         toggleDownloadButtons(dataToBrowse.length > 0);
+    }
+
+    function performBrowseSearch() {
+        const searchTerm = browseSearchInput.value.trim().toLowerCase();
+        
+        if (!searchTerm) {
+            alert('Please enter a search term.');
+            return;
+        }
+
+        let matchedRows = [];
+        originalBrowseData.forEach(row => {
+            if (Object.values(row).some(val => String(val).toLowerCase().includes(searchTerm))) {
+                matchedRows.push(row);
+            }
+        });
+
+        currentDataForDisplayAndDownload = matchedRows;
+        sortColumnKey = ''; // Reset sort for new search
+        sortDirection = 'asc';
+        sortAndDisplayData();
+        resultsCountDiv.textContent = `Found ${matchedRows.length} match(es) in browse results.`;
+        toggleDownloadButtons(matchedRows.length > 0);
+        if (matchedRows.length === 0) {
+             searchResultsDiv.innerHTML = '<p>No results found.</p>';
+        }
+    }
+
+    function clearBrowseSearch() {
+        browseSearchInput.value = '';
+        currentDataForDisplayAndDownload = originalBrowseData;
+        sortColumnKey = '';
+        sortDirection = 'asc';
+        sortAndDisplayData();
+        resultsCountDiv.textContent = `Displaying ${originalBrowseData.length} row(s).`;
+        toggleDownloadButtons(originalBrowseData.length > 0);
     }
 
     function performSearch() {
@@ -342,11 +424,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateBrowseFileDropdown(fileNames) {
-        browseFileSelect.innerHTML = '<option value="all">All Loaded Files</option>';
+        browseFileSelect.innerHTML = '<option value="all">All loaded organisms</option>';
         fileNames.forEach(name => {
             const option = document.createElement('option');
             option.value = name;
-            option.textContent = name;
+            option.textContent = formatFileName(name);
             browseFileSelect.appendChild(option);
         });
     }
