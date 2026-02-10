@@ -22,28 +22,30 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Constants ---
     const LOCAL_STORAGE_KEY = 'localTxtFileData_v2';
     const DEFAULT_FILES = [
-        'data/Yersinia.txt',
-        'data/Staphylococcus_aureus.txt',
-        'data/Salmonella.txt',
-        'data/Klebsiella_pneumoniae.txt', 
-        'data/Escherichia_coli.txt',
-        'data/Pseudomonas_aeruginosa.txt',
-        'data/Enterococcus_faecium.txt',
-        'data/Enterococcus_faecalis.txt', 
-        'data/Neisseria_gonorrhoeae.txt',
-        'data/Enterobacter.txt',
-        'data/Acinetobacter_baumannii.txt'
+        './data/Yersinia.txt',
+        './data/Staphylococcus_aureus.txt',
+        './data/Salmonella.txt',
+        './data/Klebsiella_pneumoniae.txt', 
+        './data/Escherichia_coli.txt',
+        './data/Streptococcus_pneumoniae.txt',
+        './data/Pseudomonas_aeruginosa.txt',
+        './data/Enterococcus_faecium.txt',
+        './data/Enterococcus_faecalis.txt', 
+        './data/Neisseria_gonorrhoeae.txt',
+        './data/Enterobacter.txt',
+        './data/Acinetobacter_baumannii.txt'
     ];
     const FIXED_HEADER_ORDER = [
-        'ruleID', 'organism', 'gene', 'nodeID', 'refseq accession', 'GenBank accession',
-        'HMM accession', 'ARO accession', 'mutation', 'variation type', 'context',
+        'ruleID', 'txid', 'organism', 'gene', 'nodeID', 'protein accession',
+        'HMM accession', 'nucleotide accession', 'ARO accession',
+        'mutation', 'variation type', 'gene context',
         'drug', 'drug class', 'phenotype', 'clinical category', 'breakpoint',
-        'breakpoint standard', 'PMID', 'evidence code', 'evidence description',
-        'evidence grade', 'evidence limitations', 'rule curation note', 'Reviewed by'
+        'breakpoint standard', 'breakpoint condition', 'PMID', 'evidence code', 
+        'evidence grade', 'evidence description', 'evidence limitations', 'rule curation note'
     ];
     const ACCESSION_URLS = {
-        'GenBank accession': 'https://www.ncbi.nlm.nih.gov/nuccore/',
-        'refseq accession': 'https://www.ncbi.nlm.nih.gov/nuccore/',
+        'protein accession': 'https://www.ncbi.nlm.nih.gov/protein/',
+        'nucleotide accession': 'https://www.ncbi.nlm.nih.gov/nuccore/',
         'PMID': 'https://pubmed.ncbi.nlm.nih.gov/',
         'ARO accession': 'https://card.mcmaster.ca/aro/',
         'evidence code': 'https://evidenceontology.org/term/',
