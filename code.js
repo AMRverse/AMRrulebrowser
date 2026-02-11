@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'PMID': 'https://pubmed.ncbi.nlm.nih.gov/',
         'ARO accession': 'https://card.mcmaster.ca/aro/',
         'evidence code': 'https://evidenceontology.org/term/',
-        'nodeID': 'https://www.ncbi.nlm.nih.gov/pathogens/genehierarchy/',
+        'nodeID': 'https://www.ncbi.nlm.nih.gov/pathogens/genehierarchy/#',
         'HMM accession': 'https://www.ncbi.nlm.nih.gov/pathogens/hmm/#'
     };
     const HEADER_TOOLTIPS = {
@@ -74,6 +74,12 @@ document.addEventListener('DOMContentLoaded', () => {
         'evidence description': 'Description of the evidence',
         'evidence limitations': 'Limitations of the evidence',
         'rule curation note': 'Curator notes about the rule'
+    };
+    const EVIDENCE_GRADE_TOOLTIPS = {
+        'high': 'The curators are confident in the categorisation, and believe that the likelihood that the effect will be substantially different from this is low.',
+        'moderate': 'The curators believe that the categorisation most likely reflects the true effect, and the likelihood that the effect will be substantially different is moderate.',
+        'low': 'The curators believe that the categorisation might not reflect the true effect, and the likelihood that the effect will be substantially different is high.',
+        'very low': 'The curators have no confidence that the categorisation reflects the true effect, and the likelihood that the effect will be substantially different is high.'
     };
 
     // --- State Variables ---
@@ -591,6 +597,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return `<a href="https://card.mcmaster.ca/aro/${aroNumber}" target="_blank">${escapeHtml(sValue)}</a>`;
         }
 
+        // Handle evidence grade with tooltips
+        if (headerKey === 'evidence grade' && EVIDENCE_GRADE_TOOLTIPS[sValue.toLowerCase()]) {
+            const tooltip = EVIDENCE_GRADE_TOOLTIPS[sValue.toLowerCase()];
+            return `<span title="${escapeHtml(tooltip)}">${escapeHtml(sValue)}</span>`;
+        }
+
         const baseUrl = ACCESSION_URLS[headerKey];
         if (baseUrl) {
             // Modified: Add replace to remove surrounding double quotes from IDs
@@ -741,12 +753,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const headersForDownload = currentHeadersForDisplay;
         const separator = format === 'tsv' ? '\t' : ',';
-        let content = headersForDownload.map(h => (format === 'csv' ? `"${String(h).replace(/"/g, '""')}"` : String(h))).join(separator) + '\n';
+        let content = headersForDownload.map(h => (format === 'csv' && h !== 'rule curation note' ? `"${String(h).replace(/"/g, '""')}"` : String(h))).join(separator) + '\n';
 
         currentDataForDisplayAndDownload.forEach(rowItem => {
             const rowValues = headersForDownload.map(headerKey => {
                 let value = rowItem[headerKey] === undefined ? '' : rowItem[headerKey];
-                if (format === 'csv') value = `"${String(value).replace(/"/g, '""')}"`;
+                if (format === 'csv' && headerKey !== 'rule curation note') {
+                    value = `"${String(value).replace(/"/g, '""')}"`;
+                }
                 return value;
             });
             content += rowValues.join(separator) + '\n';
