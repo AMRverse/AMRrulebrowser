@@ -9,18 +9,18 @@
 <body>
     <div class="container">
         <div class="header-section">
-            <img src="logo.png" alt="Logo" id="logo">
+            <img src="../assets/logo.png" alt="Logo" id="logo">
         </div>
 
         <div class="controls" style="display: none;">
             <label for="fileInput">Select additional organisms files to load:</label>
             <input type="file" id="fileInput" multiple accept=".txt">
-            <button id="loadButton">Load Selected Files</button>
-            <button id="clearButton">Clear All Data</button>
+            <button id="loadButton">Load selected files</button>
+            <button id="clearButton">Clear all data</button>
         </div>
 
         <div class="status" style="display: none;">
-            <h3>Loaded Files:</h3>
+            <h3>Loaded files:</h3>
             <ul id="loadedFilesList">
                 <!-- Loaded file names will appear here -->
             </ul>
@@ -39,7 +39,7 @@
         <div id="browseControlsSection" class="browse-section">
             <label for="browseFileSelect">Select an organism to browse:</label>
             <select id="browseFileSelect">
-                <option value="all">All loaded organisms</option>
+                <option value="all">All organisms</option>
                 <!-- File names will be populated here -->
             </select>
             <br><br>

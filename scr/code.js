@@ -475,7 +475,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 rowObject[header] = values[index] ? values[index].trim() : '';
             });
             return rowObject;
-        }).filter(row => Object.values(row).some(val => val && String(val).trim() !== ''));
+        }).filter(row => {
+            // Filter out rows with ruleID 24566181 (handle potential quote characters)
+            const ruleID = String(row.ruleID || '').trim().replace(/"/g, '');
+            if (ruleID === '24566181') {
+                return false;
+            }
+            return Object.values(row).some(val => val && String(val).trim() !== '');
+        });
         return { headers, rows, headerLineIndex };
     }
     
@@ -492,7 +499,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
   function generateLink(headerKey, value) {
-        const sValue = String(value);
+        let sValue = String(value);
+        
+        // Remove "s__" prefix from organism column
+        if (headerKey === 'organism' && sValue.startsWith('s__')) {
+            sValue = sValue.substring(3);
+        }
+        
         if (!sValue || sValue === '-' || sValue.trim() === '') {
             return sValue; // Return original non-values as is
         }
