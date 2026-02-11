@@ -92,45 +92,80 @@ document.addEventListener('DOMContentLoaded', () => {
     let CLASS_ARO_MAP = {}; // Maps drug class names to ARO IDs
 
     // --- Initialization ---
-    fetchAndParseCardMapping(); // Fetch CARD mapping in background
-    initializeApplication();
+    (async () => {
+        await fetchAndParseCardMapping(); // Load CARD mapping first
+        initializeApplication();
+    })();
 
     // --- Helper Functions for GitHub File Fetching ---
+    
+    // Mapping for common typos and variations
+    const TYPO_CORRECTIONS = {
+        'penicillin beta-lactam antibiotc': 'penicillin beta-lactam',
+        'sulfonamides': 'sulfonamide antibiotic',
+        'aminoglycosides': 'aminoglycoside antibiotic',
+        'kanamycin': 'kanamycin a'
+    };
+    
+    // Normalize strings for case-insensitive and hyphen-space matching
+    function normalizeKey(str) {
+        let normalized = String(str)
+            .toLowerCase()
+            .replace(/-/g, ' ')  // Replace hyphens with spaces
+            .replace(/\s+/g, ' ')  // Collapse multiple spaces
+            .trim();
+        
+        // Apply typo corrections
+        if (TYPO_CORRECTIONS[normalized]) {
+            normalized = TYPO_CORRECTIONS[normalized];
+        }
+        
+        return normalized;
+    }
+    
     async function fetchAndParseCardMapping() {
         try {
-            const url = 'https://raw.githubusercontent.com/AMRverse/AMRrules/genome_summary_report_dev/src/amrrules/resources/amrfp_to_card_drugs_classes.txt';
-            const response = await fetch(url);
+            // Try loading from GitHub first
+            const response = await fetch('https://raw.githubusercontent.com/amrverse/AMRrulebrowser/main/card_drug_names.tsv');
             if (!response.ok) throw new Error(`Failed to fetch CARD mapping: ${response.statusText}`);
             const content = await response.text();
             
             const lines = content.split('\n');
-            lines.forEach(line => {
-                if (line.trim() === '' || line.startsWith('AFP_Subclass')) return; // Skip empty lines and header
+            let drugCount = 0;
+            let classCount = 0;
+            
+            lines.forEach((line, index) => {
+                if (line.trim() === '') return; // Skip empty lines
+                if (index === 0) return; // Skip header line
                 
                 const parts = line.split('\t');
-                if (parts.length < 4) return;
+                if (parts.length < 3) return;
                 
-                const aroId = parts[2].trim();
+                const aroId = parts[0].trim();
                 if (aroId === '-' || !aroId) return; // Skip entries without ARO ID
                 
                 const aroNumber = aroId.replace('ARO:', '');
                 const drugName = parts[1].trim();
-                const className = parts[3].trim();
+                const className = parts[2].trim();
                 
-                // If it's a drug entry (column 2 is not "-")
-                if (drugName !== '-' && drugName) {
-                    DRUG_ARO_MAP[drugName.toLowerCase()] = aroNumber;
+                // If it's a drug entry
+                if (drugName && drugName !== '-') {
+                    const normalizedDrug = normalizeKey(drugName);
+                    DRUG_ARO_MAP[normalizedDrug] = aroNumber;
+                    drugCount++;
                 }
                 
-                // If it's a class entry (all entries have class info)
-                if (className) {
-                    CLASS_ARO_MAP[className.toLowerCase()] = aroNumber;
+                // If it's a class entry
+                if (className && className !== '-') {
+                    const normalizedClass = normalizeKey(className);
+                    CLASS_ARO_MAP[normalizedClass] = aroNumber;
+                    classCount++;
                 }
             });
             
-            console.log(`Loaded ${Object.keys(DRUG_ARO_MAP).length} drug entries and ${Object.keys(CLASS_ARO_MAP).length} class entries from CARD mapping`);
+            console.log(`Loaded ${drugCount} drug entries and ${classCount} class entries from CARD mapping`);
         } catch (error) {
-            console.warn("Could not fetch CARD drug/class mapping:", error);
+            console.error("Error loading CARD drug/class mapping from GitHub:", error);
             // Continue without the mappings - links won't be created for drugs and classes
         }
     }
@@ -548,13 +583,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const values = line.split('\t');
             const rowObject = {};
             headers.forEach((header, index) => {
-                rowObject[header] = values[index] ? values[index].trim() : '';
+                // Comprehensive trimming to remove all leading/trailing whitespace
+                let value = values[index] || '';
+                value = value.trim().replace(/\s+$/g, '').replace(/^\s+/g, '');
+                rowObject[header] = value;
             });
             return rowObject;
         }).filter(row => {
-            // Filter out rows with ruleID 24566181 (handle potential quote characters)
+            // Filter out specific ruleIDs (handle potential quote characters)
             const ruleID = String(row.ruleID || '').trim().replace(/"/g, '');
-            if (ruleID === '24566181') {
+            const blockedRuleIDs = ['24566181', 'KOX0008', 'KOX0009'];
+            if (blockedRuleIDs.includes(ruleID)) {
                 return false;
             }
             return Object.values(row).some(val => val && String(val).trim() !== '');
@@ -574,8 +613,8 @@ document.addEventListener('DOMContentLoaded', () => {
              .replace(/'/g, "&#039;");
     }
 
-  function generateLink(headerKey, value) {
-        let sValue = String(value);
+    function generateLink(headerKey, value) {
+        let sValue = String(value).trim(); // Trim immediately when converting to string
         
         // Remove "s__" prefix from organism column
         if (headerKey === 'organism' && sValue.startsWith('s__')) {
@@ -591,15 +630,21 @@ document.addEventListener('DOMContentLoaded', () => {
             return sValue; // Return original non-values as is
         }
 
-        // Handle drug and drug class fields with CARD mappings
-        if (headerKey === 'drug' && DRUG_ARO_MAP[sValue.toLowerCase()]) {
-            const aroNumber = DRUG_ARO_MAP[sValue.toLowerCase()];
-            return `<a href="https://card.mcmaster.ca/aro/${aroNumber}" target="_blank">${escapeHtml(sValue)}</a>`;
+        // Handle drug and drug class fields with CARD mappings (using normalized lookups)
+        if (headerKey === 'drug') {
+            const normalizedDrug = normalizeKey(sValue);
+            if (DRUG_ARO_MAP[normalizedDrug]) {
+                const aroNumber = DRUG_ARO_MAP[normalizedDrug];
+                return `<a href="https://card.mcmaster.ca/aro/${aroNumber}" target="_blank">${escapeHtml(sValue)}</a>`;
+            }
         }
         
-        if (headerKey === 'drug class' && CLASS_ARO_MAP[sValue.toLowerCase()]) {
-            const aroNumber = CLASS_ARO_MAP[sValue.toLowerCase()];
-            return `<a href="https://card.mcmaster.ca/aro/${aroNumber}" target="_blank">${escapeHtml(sValue)}</a>`;
+        if (headerKey === 'drug class') {
+            const normalizedClass = normalizeKey(sValue);
+            if (CLASS_ARO_MAP[normalizedClass]) {
+                const aroNumber = CLASS_ARO_MAP[normalizedClass];
+                return `<a href="https://card.mcmaster.ca/aro/${aroNumber}" target="_blank">${escapeHtml(sValue)}</a>`;
+            }
         }
 
         // Handle evidence grade with tooltips
@@ -638,23 +683,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             // Modified: Add replace to remove surrounding double quotes from IDs
-            const ids = sValue.split(/[,;\s]+/).map(id => id.trim().replace(/^"|"$/g, '')).filter(id => id);
+            const ids = sValue.split(/[,;\s]+/).map(id => id.trim().replace(/^"|"$/g, '')).filter(id => id && id.trim() !== '');
 
             const buildLinkTag = (displayAndProcessValue) => {
-                let suffixPart = displayAndProcessValue; // This will be processed for the URL
-
-                if (headerKey === 'ARO accession' && displayAndProcessValue.startsWith('ARO:')) {
-                    suffixPart = displayAndProcessValue.substring(4);
-                } else if (headerKey === 'HMM accession' && displayAndProcessValue.includes('.')) {
-                    suffixPart = displayAndProcessValue;
+                let suffixPart = displayAndProcessValue.trim(); // Extra trim for safety
+                
+                if (headerKey === 'ARO accession' && suffixPart.startsWith('ARO:')) {
+                    suffixPart = suffixPart.substring(4);
+                } else if (headerKey === 'HMM accession' && suffixPart.includes('.')) {
+                    suffixPart = suffixPart;
                 }
 
                 let urlSuffix;
-                if (headerKey === 'evidence code' && displayAndProcessValue.startsWith('ECO:')) {
+                if (headerKey === 'evidence code' && suffixPart.startsWith('ECO:')) {
                     urlSuffix = suffixPart; // Use as-is, not encoded, per original implicit logic
-                    suffixPart = displayAndProcessValue.substring(4);
                 } else {
-                    urlSuffix = encodeURIComponent(suffixPart);
+                    urlSuffix = encodeURIComponent(suffixPart.trim()); // Extra trim before encoding
                     // Ensure colons are not encoded in the final URL suffix
                     urlSuffix = urlSuffix.replace(/%3A/g, ':');
                 }
