@@ -605,6 +605,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const baseUrl = ACCESSION_URLS[headerKey];
         if (baseUrl) {
+            // Special handling for evidence code: extract ECO codes and keep full text as display
+            if (headerKey === 'evidence code') {
+                // Split by comma or semicolon first, then process each entry
+                const ecoEntries = sValue.split(/[,;]/).map(entry => entry.trim().replace(/^"|"$/g, '')).filter(entry => entry);
+                
+                if (ecoEntries.length > 1) {
+                    // Multiple evidence codes
+                    return ecoEntries.map(entry => {
+                        const ecoMatch = entry.match(/ECO:\d+/);
+                        if (ecoMatch) {
+                            const ecoCode = ecoMatch[0];
+                            return `<a href="${baseUrl}${ecoCode}" target="_blank">${escapeHtml(entry)}</a>`;
+                        }
+                        return escapeHtml(entry);
+                    }).join(', ');
+                } else if (ecoEntries.length === 1) {
+                    // Single evidence code
+                    const entry = ecoEntries[0];
+                    const ecoMatch = entry.match(/ECO:\d+/);
+                    if (ecoMatch) {
+                        const ecoCode = ecoMatch[0];
+                        return `<a href="${baseUrl}${ecoCode}" target="_blank">${escapeHtml(entry)}</a>`;
+                    }
+                    return escapeHtml(entry);
+                }
+            }
+            
             // Modified: Add replace to remove surrounding double quotes from IDs
             const ids = sValue.split(/[,;\s]+/).map(id => id.trim().replace(/^"|"$/g, '')).filter(id => id);
 
