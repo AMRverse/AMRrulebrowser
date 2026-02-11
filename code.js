@@ -582,6 +582,11 @@ document.addEventListener('DOMContentLoaded', () => {
             sValue = sValue.substring(3);
         }
         
+        // Remove surrounding double quotes from rule curation note
+        if (headerKey === 'rule curation note') {
+            sValue = sValue.replace(/^"|"$/g, '');
+        }
+        
         if (!sValue || sValue === '-' || sValue.trim() === '') {
             return sValue; // Return original non-values as is
         }
