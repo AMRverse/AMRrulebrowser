@@ -169,6 +169,11 @@ button:hover {
     color: #777;
     cursor: not-allowed;
 }
+
+#downloadCsvButton {
+    display: none;
+}
+
 table {
     width: 100%;
     border-collapse: collapse;

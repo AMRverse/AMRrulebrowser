@@ -41,11 +41,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const ACCESSION_URLS = {
         'protein accession': 'https://www.ncbi.nlm.nih.gov/protein/',
         'nucleotide accession': 'https://www.ncbi.nlm.nih.gov/nuccore/',
+        'txid': 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=',
         'PMID': 'https://pubmed.ncbi.nlm.nih.gov/',
         'ARO accession': 'https://card.mcmaster.ca/aro/',
         'evidence code': 'https://evidenceontology.org/term/',
         'nodeID': 'https://www.ncbi.nlm.nih.gov/pathogens/genehierarchy/',
         'HMM accession': 'https://www.ncbi.nlm.nih.gov/pathogens/hmm/#'
+    };
+    const HEADER_TOOLTIPS = {
+        'ruleID': 'Unique identifier for the rule',
+        'txid': 'NCBI taxonomy ID',
+        'organism': 'Organism name',
+        'gene': 'Gene name',
+        'nodeID': 'NCBI node ID',
+        'protein accession': 'NCBI protein accession number',
+        'HMM accession': 'Hidden Markov Model accession number',
+        'nucleotide accession': 'NCBI nucleotide accession number',
+        'ARO accession': 'Antibiotic Resistance Ontology accession',
+        'mutation': 'Specific mutation',
+        'variation type': 'Type of genetic variation',
+        'gene context': 'Context information about the gene',
+        'drug': 'Drug name',
+        'drug class': 'Drug classification',
+        'phenotype': 'Observable phenotype',
+        'clinical category': 'Clinical significance category',
+        'breakpoint': 'MIC breakpoint value',
+        'breakpoint standard': 'Standard for breakpoint (e.g., CLSI, EUCAST)',
+        'breakpoint condition': 'Condition for breakpoint application',
+        'PMID': 'PubMed article ID',
+        'evidence code': 'Evidence Ontology code',
+        'evidence grade': 'Grade of evidence quality',
+        'evidence description': 'Description of the evidence',
+        'evidence limitations': 'Limitations of the evidence',
+        'rule curation note': 'Curator notes about the rule'
     };
 
     // --- State Variables ---
@@ -54,11 +82,53 @@ document.addEventListener('DOMContentLoaded', () => {
     let sortColumnKey = '';
     let sortDirection = 'asc';
     let originalBrowseData = []; // Track original browse data before filtering
+    let DRUG_ARO_MAP = {}; // Maps drug names to ARO IDs
+    let CLASS_ARO_MAP = {}; // Maps drug class names to ARO IDs
 
     // --- Initialization ---
+    fetchAndParseCardMapping(); // Fetch CARD mapping in background
     initializeApplication();
 
     // --- Helper Functions for GitHub File Fetching ---
+    async function fetchAndParseCardMapping() {
+        try {
+            const url = 'https://raw.githubusercontent.com/AMRverse/AMRrules/genome_summary_report_dev/src/amrrules/resources/amrfp_to_card_drugs_classes.txt';
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Failed to fetch CARD mapping: ${response.statusText}`);
+            const content = await response.text();
+            
+            const lines = content.split('\n');
+            lines.forEach(line => {
+                if (line.trim() === '' || line.startsWith('AFP_Subclass')) return; // Skip empty lines and header
+                
+                const parts = line.split('\t');
+                if (parts.length < 4) return;
+                
+                const aroId = parts[2].trim();
+                if (aroId === '-' || !aroId) return; // Skip entries without ARO ID
+                
+                const aroNumber = aroId.replace('ARO:', '');
+                const drugName = parts[1].trim();
+                const className = parts[3].trim();
+                
+                // If it's a drug entry (column 2 is not "-")
+                if (drugName !== '-' && drugName) {
+                    DRUG_ARO_MAP[drugName.toLowerCase()] = aroNumber;
+                }
+                
+                // If it's a class entry (all entries have class info)
+                if (className) {
+                    CLASS_ARO_MAP[className.toLowerCase()] = aroNumber;
+                }
+            });
+            
+            console.log(`Loaded ${Object.keys(DRUG_ARO_MAP).length} drug entries and ${Object.keys(CLASS_ARO_MAP).length} class entries from CARD mapping`);
+        } catch (error) {
+            console.warn("Could not fetch CARD drug/class mapping:", error);
+            // Continue without the mappings - links won't be created for drugs and classes
+        }
+    }
+    
     async function fetchDefaultFilesFromGitHub() {
         try {
             const response = await fetch(GITHUB_API_URL);
@@ -510,6 +580,17 @@ document.addEventListener('DOMContentLoaded', () => {
             return sValue; // Return original non-values as is
         }
 
+        // Handle drug and drug class fields with CARD mappings
+        if (headerKey === 'drug' && DRUG_ARO_MAP[sValue.toLowerCase()]) {
+            const aroNumber = DRUG_ARO_MAP[sValue.toLowerCase()];
+            return `<a href="https://card.mcmaster.ca/aro/${aroNumber}" target="_blank">${escapeHtml(sValue)}</a>`;
+        }
+        
+        if (headerKey === 'drug class' && CLASS_ARO_MAP[sValue.toLowerCase()]) {
+            const aroNumber = CLASS_ARO_MAP[sValue.toLowerCase()];
+            return `<a href="https://card.mcmaster.ca/aro/${aroNumber}" target="_blank">${escapeHtml(sValue)}</a>`;
+        }
+
         const baseUrl = ACCESSION_URLS[headerKey];
         if (baseUrl) {
             // Modified: Add replace to remove surrounding double quotes from IDs
@@ -596,6 +677,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const th = document.createElement('th');
             th.textContent = headerKey;
             th.dataset.columnKey = headerKey;
+            th.title = HEADER_TOOLTIPS[headerKey] || headerKey;
 
             const arrowSpan = document.createElement('span');
             arrowSpan.classList.add('sort-arrow');
