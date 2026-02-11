@@ -284,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         if (selectedFileName === 'all') {
-            resultsHeader.textContent = 'Browsing: all loaded organisms';
+            resultsHeader.textContent = 'Browsing: all organisms';
             Object.values(storedData).forEach(fileData => {
                 if (fileData && fileData.rows) dataToBrowse.push(...fileData.rows);
                 if (fileData && fileData.headers) fileData.headers.forEach(h => distinctHeaders.add(h));
