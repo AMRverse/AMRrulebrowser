@@ -424,7 +424,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateBrowseFileDropdown(fileNames) {
-        browseFileSelect.innerHTML = '<option value="all">All loaded organisms</option>';
+        browseFileSelect.innerHTML = '<option value="all">All organisms</option>';
         fileNames.forEach(name => {
             const option = document.createElement('option');
             option.value = name;
