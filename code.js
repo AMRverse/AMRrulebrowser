@@ -825,6 +825,8 @@ document.addEventListener('DOMContentLoaded', () => {
             col.style.width = pct + '%';
             if (NOWRAP_COLUMNS.has(headerKey)) col.className = 'col-nowrap';
             else col.className = 'col-wrap';
+            // store column key for access when hiding/unhiding
+            col.dataset.columnKey = headerKey;
             colgroup.appendChild(col);
         });
         table.appendChild(colgroup);
@@ -850,6 +852,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Apply nowrap/wrap classes to header
             if (NOWRAP_COLUMNS && NOWRAP_COLUMNS.has(headerKey)) th.classList.add('col-nowrap');
             else th.classList.add('col-wrap');
+            // attach data-column-key to header for checkbox mapping
+            th.dataset.columnKey = headerKey;
 
             // Add an info icon/link next to the header when applicable
             const infoUrl = INFO_LINKS[headerKey];
@@ -977,6 +981,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
 
+                    // mark td with column key for easy show/hide
+                    td.dataset.columnKey = headerKey;
                     rowElement.appendChild(td);
                 });
                 fragment.appendChild(rowElement);
@@ -985,6 +991,13 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.appendChild(fragment);
         table.appendChild(tbody);
         searchResultsDiv.appendChild(table);
+
+        // Populate columns panel with checkboxes
+        try {
+            populateColumnsPanel(headers);
+        } catch (e) {
+            console.warn('Error populating columns panel', e);
+        }
 
         if (rowsData.length === 0 && browseModeRadio.checked) {
              resultsCountDiv.textContent = `Displaying 0 rows. ${ (browseFileSelect.value !== 'all' && Object.keys(JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY)) || {}).length > 0) ? 'Selected file might be empty or header-only.' : ''}`;
@@ -998,6 +1011,103 @@ document.addEventListener('DOMContentLoaded', () => {
     function toggleDownloadButtons(enable) {
         downloadTsvButton.disabled = !enable;
         downloadCsvButton.disabled = !enable;
+    }
+
+    // Column show/hide management
+    const COLUMN_PREF_KEY = 'amrrules_hidden_columns_v1';
+
+    function getHiddenColumnsFromStorage() {
+        try {
+            const raw = localStorage.getItem(COLUMN_PREF_KEY);
+            if (!raw) return new Set();
+            const arr = JSON.parse(raw);
+            return new Set(arr);
+        } catch (e) {
+            return new Set();
+        }
+    }
+
+    function saveHiddenColumnsToStorage(setOfKeys) {
+        try {
+            const arr = Array.from(setOfKeys);
+            localStorage.setItem(COLUMN_PREF_KEY, JSON.stringify(arr));
+        } catch (e) {
+            console.warn('Could not save column prefs', e);
+        }
+    }
+
+    function populateColumnsPanel(headers) {
+        const container = document.getElementById('columnsCheckboxes');
+        const panel = document.getElementById('columnsPanel');
+        const toggle = document.getElementById('columnsToggle');
+        if (!container || !panel || !toggle) return;
+
+        // Position panel relative to toggle
+        toggle.addEventListener('click', () => {
+            if (panel.style.display === 'none' || panel.style.display === '') panel.style.display = 'block';
+            else panel.style.display = 'none';
+        });
+
+        // Close panel when clicking outside
+        document.addEventListener('click', (ev) => {
+            if (!panel || !toggle) return;
+            if (panel.style.display === 'none') return;
+            if (panel.contains(ev.target) || toggle.contains(ev.target)) return;
+            panel.style.display = 'none';
+        });
+
+        container.innerHTML = '';
+        const hiddenSet = getHiddenColumnsFromStorage();
+
+        headers.forEach((h) => {
+            const id = 'colchk_' + h.replace(/[^a-z0-9]/gi, '_');
+            const label = document.createElement('label');
+            const chk = document.createElement('input');
+            chk.type = 'checkbox';
+            chk.id = id;
+            chk.checked = !hiddenSet.has(h);
+            chk.dataset.columnKey = h;
+            const span = document.createElement('span');
+            span.textContent = ' ' + h;
+            label.appendChild(chk);
+            label.appendChild(span);
+            container.appendChild(label);
+
+            chk.addEventListener('change', (e) => {
+                const key = e.target.dataset.columnKey;
+                if (!key) return;
+                if (e.target.checked) hiddenSet.delete(key);
+                else hiddenSet.add(key);
+                saveHiddenColumnsToStorage(hiddenSet);
+                // Apply visibility to current table immediately
+                applyColumnVisibility(key, !hiddenSet.has(key));
+            });
+
+            // Apply initial visibility
+            applyColumnVisibility(h, !hiddenSet.has(h));
+        });
+    }
+
+    function applyColumnVisibility(columnKey, visible) {
+        const table = searchResultsDiv.querySelector('table');
+        if (!table) return;
+        // find header index
+        const thead = table.querySelector('thead');
+        if (!thead) return;
+        const ths = Array.from(thead.querySelectorAll('th'));
+        const idx = ths.findIndex(t => t.dataset && t.dataset.columnKey === columnKey);
+        if (idx === -1) return;
+        // toggle th
+        ths[idx].style.display = visible ? '' : 'none';
+        // toggle col
+        const col = table.querySelectorAll('col')[idx];
+        if (col) col.style.display = visible ? '' : 'none';
+        // toggle every td in that column
+        const rows = Array.from(table.querySelectorAll('tbody tr'));
+        rows.forEach(r => {
+            const tds = Array.from(r.querySelectorAll('td'));
+            if (tds[idx]) tds[idx].style.display = visible ? '' : 'none';
+        });
     }
 
     function downloadCurrentData(format) {

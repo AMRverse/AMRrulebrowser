@@ -305,6 +305,29 @@ tr:hover {
     margin-left: 8px;
 }
 
+/* Columns panel */
+.columns-panel {
+    position: absolute;
+    right: 20px;
+    top: 56px;
+    background: #fff;
+    border: 1px solid #ddd;
+    padding: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    border-radius: 4px;
+    z-index: 2000;
+    min-width: 220px;
+}
+.columns-panel-inner {
+    max-height: 360px;
+    overflow: auto;
+}
+.columns-panel label {
+    display: block;
+    font-size: 13px;
+    margin: 6px 0;
+}
+
 /* Footer Styles */
 .footer {
     border-top: 1px solid #ddd;
