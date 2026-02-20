@@ -616,8 +616,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Create a single shared custom tooltip element for fast, responsive header tooltips
     const customTooltip = document.createElement('div');
     customTooltip.className = 'custom-tooltip';
-    customTooltip.style.display = 'none';
     document.body.appendChild(customTooltip);
+    let tooltipShowTimer = null;
+    let tooltipHideTimer = null;
+    const TOOLTIP_SHOW_DELAY = 120; // ms
+    const TOOLTIP_HIDE_DELAY = 50; // ms to allow quick re-entry without flicker
 
     // Mapping of column headers to spec documentation URLs for the info icon
     const INFO_LINKS = {
@@ -812,17 +815,26 @@ document.addEventListener('DOMContentLoaded', () => {
             th.addEventListener('mouseenter', (e) => {
                 const tip = th.dataset.tooltip;
                 if (!tip) return;
-                customTooltip.textContent = tip;
-                customTooltip.style.display = 'block';
-                // Initial position below header
-                const rect = th.getBoundingClientRect();
-                const top = rect.bottom + 6;
-                let left = rect.left + 6;
-                customTooltip.style.top = `${top}px`;
-                customTooltip.style.left = `${left}px`;
+                // Clear any hide timer if re-entering quickly
+                if (tooltipHideTimer) {
+                    clearTimeout(tooltipHideTimer);
+                    tooltipHideTimer = null;
+                }
+                // Start show timer
+                tooltipShowTimer = setTimeout(() => {
+                    customTooltip.textContent = tip;
+                    customTooltip.classList.add('visible');
+                    // Position initially near header bottom
+                    const rect = th.getBoundingClientRect();
+                    const top = rect.bottom + 8;
+                    let left = rect.left + 8;
+                    customTooltip.style.top = `${top}px`;
+                    customTooltip.style.left = `${left}px`;
+                }, TOOLTIP_SHOW_DELAY);
             });
             th.addEventListener('mousemove', (e) => {
-                if (customTooltip.style.display === 'none') return;
+                // If tooltip isn't visible yet, do nothing (it will be positioned on show)
+                if (!customTooltip.classList.contains('visible')) return;
                 const tooltipWidth = customTooltip.offsetWidth || 200;
                 let left = e.clientX + 12;
                 if (left + tooltipWidth > window.innerWidth - 8) left = window.innerWidth - tooltipWidth - 8;
@@ -830,7 +842,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 customTooltip.style.top = `${e.clientY + 16}px`;
             });
             th.addEventListener('mouseleave', () => {
-                customTooltip.style.display = 'none';
+                // Cancel pending show
+                if (tooltipShowTimer) {
+                    clearTimeout(tooltipShowTimer);
+                    tooltipShowTimer = null;
+                }
+                // Start hide timer so small mouse slips don't hide instantly
+                tooltipHideTimer = setTimeout(() => {
+                    customTooltip.classList.remove('visible');
+                    tooltipHideTimer = null;
+                }, TOOLTIP_HIDE_DELAY);
             });
 
             th.addEventListener('click', () => {
@@ -856,6 +877,51 @@ document.addEventListener('DOMContentLoaded', () => {
                     const td = document.createElement('td');
                     const cellValue = rowDataItem[headerKey] === undefined ? '' : rowDataItem[headerKey];
                     td.innerHTML = generateLink(headerKey, cellValue);
+
+                    // If this is an evidence grade cell, attach the shared custom tooltip to the whole cell
+                    if (headerKey === 'evidence grade') {
+                        const gradeKey = String(cellValue).toLowerCase().trim();
+                        const gradeTooltip = EVIDENCE_GRADE_TOOLTIPS[gradeKey];
+                        if (gradeTooltip) {
+                            td.dataset.tooltip = gradeTooltip;
+
+                            // Attach mouse handlers to use the shared custom tooltip (same behaviour as headers)
+                            td.addEventListener('mouseenter', (e) => {
+                                if (tooltipHideTimer) {
+                                    clearTimeout(tooltipHideTimer);
+                                    tooltipHideTimer = null;
+                                }
+                                tooltipShowTimer = setTimeout(() => {
+                                    customTooltip.textContent = td.dataset.tooltip;
+                                    customTooltip.classList.add('visible');
+                                    const rect = td.getBoundingClientRect();
+                                    const top = rect.bottom + 8;
+                                    let left = rect.left + 8;
+                                    customTooltip.style.top = `${top}px`;
+                                    customTooltip.style.left = `${left}px`;
+                                }, TOOLTIP_SHOW_DELAY);
+                            });
+                            td.addEventListener('mousemove', (e) => {
+                                if (!customTooltip.classList.contains('visible')) return;
+                                const tooltipWidth = customTooltip.offsetWidth || 200;
+                                let left = e.clientX + 12;
+                                if (left + tooltipWidth > window.innerWidth - 8) left = window.innerWidth - tooltipWidth - 8;
+                                customTooltip.style.left = `${left}px`;
+                                customTooltip.style.top = `${e.clientY + 16}px`;
+                            });
+                            td.addEventListener('mouseleave', () => {
+                                if (tooltipShowTimer) {
+                                    clearTimeout(tooltipShowTimer);
+                                    tooltipShowTimer = null;
+                                }
+                                tooltipHideTimer = setTimeout(() => {
+                                    customTooltip.classList.remove('visible');
+                                    tooltipHideTimer = null;
+                                }, TOOLTIP_HIDE_DELAY);
+                            });
+                        }
+                    }
+
                     rowElement.appendChild(td);
                 });
                 fragment.appendChild(rowElement);

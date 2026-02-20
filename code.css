@@ -304,7 +304,7 @@ tr:hover {
 /* Styles for custom header tooltip and info icons */
 .custom-tooltip {
     position: fixed;
-    background: rgba(0,0,0,0.85);
+    background: rgba(0,0,0,0.88);
     color: #fff;
     padding: 6px 8px;
     border-radius: 4px;
@@ -312,6 +312,13 @@ tr:hover {
     z-index: 1200;
     max-width: 360px;
     pointer-events: none; /* So it doesn't interfere with hover events */
+    opacity: 0;
+    transition: opacity 120ms ease-in-out, transform 120ms ease-in-out;
+    transform: translateY(4px);
+}
+.custom-tooltip.visible {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .info-icon {
