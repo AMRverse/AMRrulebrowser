@@ -400,6 +400,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (fileData && fileData.rows) dataToBrowse.push(...fileData.rows);
                 if (fileData && fileData.headers) fileData.headers.forEach(h => distinctHeaders.add(h));
             });
+        } else if (selectedFileName.includes('::')) {
+            // option encoded as fileName::encodedOrganism
+            const parts = selectedFileName.split('::');
+            const fileKey = parts[0];
+            const org = decodeURIComponent(parts.slice(1).join('::'));
+            if (storedData[fileKey] && storedData[fileKey].rows) {
+                resultsHeader.textContent = `Browsing: ${org}`;
+                // filter rows for organism, removing s__ prefix and trimming/quotes
+                dataToBrowse = storedData[fileKey].rows.filter(r => {
+                    let v = r['organism'] || '';
+                    if (typeof v !== 'string') v = String(v);
+                    v = v.trim().replace(/^"|"$/g, '');
+                    if (v.startsWith('s__')) v = v.substring(3);
+                    return normalizeKey(v) === normalizeKey(org);
+                });
+                if (storedData[fileKey].headers) storedData[fileKey].headers.forEach(h => distinctHeaders.add(h));
+            }
         } else if (storedData[selectedFileName] && storedData[selectedFileName].rows) {
             resultsHeader.textContent = `Browsing: ${formatFileName(selectedFileName)}`;
             dataToBrowse = storedData[selectedFileName].rows;
@@ -536,7 +553,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateBrowseFileDropdown(fileNames) {
         browseFileSelect.innerHTML = '<option value="all">All organisms</option>';
+        const storedData = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY)) || {};
         fileNames.forEach(name => {
+            const fileData = storedData[name];
+            // If file has an 'organism' header and multiple distinct organisms, show organism-level options
+            if (fileData && fileData.headers && fileData.headers.includes('organism') && Array.isArray(fileData.rows)) {
+                const orgSet = new Set();
+                fileData.rows.forEach(r => {
+                    let v = r['organism'] || '';
+                    if (typeof v === 'string') {
+                        v = v.trim().replace(/^"|"$/g, '');
+                        if (v.startsWith('s__')) v = v.substring(3);
+                        if (v !== '') orgSet.add(v);
+                    }
+                });
+
+                if (orgSet.size > 1) {
+                    // Create an option per organism (value encodes file and organism)
+                    Array.from(orgSet).sort().forEach(org => {
+                        const option = document.createElement('option');
+                        option.value = `${name}::${encodeURIComponent(org)}`;
+                        option.textContent = org.replace(/_/g, ' ');
+                        browseFileSelect.appendChild(option);
+                    });
+                    return; // skip adding file-level option
+                }
+            }
+
+            // Default: add file-level option
             const option = document.createElement('option');
             option.value = name;
             option.textContent = formatFileName(name);
