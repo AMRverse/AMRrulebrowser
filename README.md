@@ -16,3 +16,5 @@ Full specification: [AMRrules spec v0.6](https://docs.google.com/spreadsheets/d/
 ### Available rules
 
 Rule curation is a work in progress, under active development by the [ESGEM-AMR](https://github.com/AMRverse/AMRrulesCuration/) Working Group.
+
+See the deep-linking examples and usage notes in [usage.md](usage.md).

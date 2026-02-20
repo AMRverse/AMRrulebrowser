@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultsCountDiv = document.getElementById('resultsCount');
     const downloadTsvButton = document.getElementById('downloadTsvButton');
     const downloadCsvButton = document.getElementById('downloadCsvButton');
+    const copyLinkButton = document.getElementById('copyLinkButton');
 
     const browseModeRadio = document.getElementById('browseMode');
     const searchModeRadio = document.getElementById('searchMode');
@@ -233,6 +234,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
     downloadTsvButton.addEventListener('click', () => downloadCurrentData('tsv'));
     downloadCsvButton.addEventListener('click', () => downloadCurrentData('csv'));
+    if (copyLinkButton) {
+        copyLinkButton.addEventListener('click', async () => {
+            try {
+                const urlToCopy = window.location.href;
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(urlToCopy);
+                } else {
+                    // Fallback for older browsers
+                    const tmp = document.createElement('input');
+                    tmp.value = urlToCopy;
+                    document.body.appendChild(tmp);
+                    tmp.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(tmp);
+                }
+                const original = copyLinkButton.textContent;
+                copyLinkButton.textContent = 'Copied!';
+                copyLinkButton.disabled = true;
+                setTimeout(() => {
+                    copyLinkButton.textContent = original;
+                    copyLinkButton.disabled = false;
+                }, 1400);
+            } catch (err) {
+                console.warn('Could not copy link', err);
+                alert('Unable to copy link to clipboard. You can manually copy the page URL from the address bar.');
+            }
+        });
+    }
 
     // --- Core Functions ---
     async function initializeApplication() {
@@ -285,6 +314,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         updateUIAfterDataLoad(storedData);
         handleModeChange(); // Set initial mode and display (e.g., browse all)
+
+        // After UI is ready, handle any deep-link in the URL (path or query)
+        try {
+            handleInitialQuery(storedData);
+        } catch (e) {
+            console.warn('Error processing initial URL query/path', e);
+        }
     }
 
     function resetUIAfterClear() {
@@ -313,6 +349,150 @@ document.addEventListener('DOMContentLoaded', () => {
         updateLoadedFilesList(fileNames.sort());
         updateColumnSelector(Array.from(allHeaders).sort());
         updateBrowseFileDropdown(fileNames.sort());
+    }
+
+    // Find a file key in storedData matching an organism-like query
+    function findFileKeyByOrganismParam(param, storedData) {
+        if (!param) return null;
+        const cleaned = String(param).replace(/\.txt$/i, '').replace(/_/g, ' ');
+        const normParam = normalizeKey(cleaned);
+        for (const key of Object.keys(storedData)) {
+            const base = key.replace(/\.txt$/i, '');
+            const formatted = formatFileName(key);
+            if (normalizeKey(base) === normParam) return key;
+            if (normalizeKey(formatted) === normParam) return key;
+            // also allow partial matches
+            if (normalizeKey(base).includes(normParam) || normalizeKey(formatted).includes(normParam)) return key;
+        }
+        // If no filename matches, search inside file rows for an organism column matching the param
+        for (const key of Object.keys(storedData)) {
+            const fileData = storedData[key];
+            if (!fileData || !Array.isArray(fileData.rows)) continue;
+            for (const r of fileData.rows) {
+                let v = r['organism'] || '';
+                if (typeof v === 'string') {
+                    v = v.trim().replace(/^"|"$/g, '');
+                    if (v.startsWith('s__')) v = v.substring(3);
+                    if (normalizeKey(v) === normParam) return key;
+                }
+            }
+        }
+        return null;
+    }
+
+    // Process URL query parameters and pathname to pre-select organism or run a search
+    function handleInitialQuery(storedData) {
+        if (typeof window === 'undefined' || !window.location) return;
+        const path = window.location.pathname || '';
+        const pathSegments = path.split('/').filter(s => s && s.trim() !== '');
+        let pathCandidate = '';
+        if (pathSegments.length > 0) {
+            pathCandidate = decodeURIComponent(pathSegments[pathSegments.length - 1]);
+            if (/\.html?$/.test(pathCandidate) || pathCandidate.toLowerCase().endsWith('examples')) {
+                pathCandidate = '';
+            }
+        }
+
+        const raw = window.location.search ? window.location.search.slice(1) : '';
+
+        // Prefer path-based organism deep-link if present
+        if (pathCandidate) {
+            const fileKey = findFileKeyByOrganismParam(pathCandidate, storedData);
+            if (fileKey) {
+                browseModeRadio.checked = true;
+                handleModeChange();
+                // Try to find an organism-specific option whose normalized organism matches the pathCandidate
+                let matchedOptionValue = null;
+                const opts = Array.from(browseFileSelect.querySelectorAll('option'));
+                const targetNorm = normalizeKey(pathCandidate);
+                for (const o of opts) {
+                    if (!o.value) continue;
+                    if (!o.value.startsWith(fileKey + '::')) continue;
+                    const parts = o.value.split('::');
+                    const enc = parts.slice(1).join('::');
+                    try {
+                        const orgRaw = decodeURIComponent(enc);
+                        if (normalizeKey(orgRaw) === targetNorm) {
+                            matchedOptionValue = o.value;
+                            break;
+                        }
+                    } catch (e) {
+                        // ignore decode errors
+                    }
+                }
+                if (matchedOptionValue) browseFileSelect.value = matchedOptionValue;
+                else browseFileSelect.value = fileKey;
+                triggerBrowse();
+                return;
+            }
+        }
+
+        // If no '=' present treat as organism shorthand (e.g. ?escherichia_coli)
+        if (raw && raw.indexOf('=') === -1) {
+            const param = decodeURIComponent(raw);
+            const fileKey = findFileKeyByOrganismParam(param, storedData);
+            if (fileKey) {
+                browseModeRadio.checked = true;
+                handleModeChange();
+                browseFileSelect.value = fileKey;
+                triggerBrowse();
+            }
+            return;
+        }
+
+        const params = new URLSearchParams(raw);
+        
+
+        if (params.has('organism') || params.has('org') || params.has('o')) {
+            const val = params.get('organism') || params.get('org') || params.get('o');
+            if (val) {
+                const fileKey = findFileKeyByOrganismParam(val, storedData);
+                if (fileKey) {
+                    browseModeRadio.checked = true;
+                    handleModeChange();
+                    // Try to select an organism-specific option if available
+                    const rawParam = String(val);
+                    const targetNorm = normalizeKey(rawParam.replace(/_/g, ' '));
+                    let matchedOptionValue = null;
+                    const opts = Array.from(browseFileSelect.querySelectorAll('option'));
+                    for (const o of opts) {
+                        if (!o.value) continue;
+                        if (!o.value.startsWith(fileKey + '::')) continue;
+                        const parts = o.value.split('::');
+                        const enc = parts.slice(1).join('::');
+                        try {
+                            const orgRaw = decodeURIComponent(enc);
+                            if (normalizeKey(orgRaw) === targetNorm) {
+                                matchedOptionValue = o.value;
+                                break;
+                            }
+                        } catch (e) {
+                            // ignore decode errors
+                        }
+                    }
+                    if (matchedOptionValue) browseFileSelect.value = matchedOptionValue;
+                    else browseFileSelect.value = fileKey;
+                    triggerBrowse();
+                }
+            }
+        }
+
+        if (params.has('drug') || params.has('gene') || params.has('rule') || params.has('search') || params.has('q')) {
+            const searchVal = params.get('drug') || params.get('gene') || params.get('rule') || params.get('search') || params.get('q');
+            if (searchVal) {
+                let col = 'all';
+                if (params.has('drug')) col = 'drug';
+                else if (params.has('gene')) col = 'gene';
+                else if (params.has('rule')) col = 'ruleID';
+
+                searchModeRadio.checked = true;
+                handleModeChange();
+                searchInput.value = searchVal;
+                const opt = Array.from(columnSelect.options).find(o => o.value === col);
+                if (opt) columnSelect.value = col;
+                performSearch();
+            }
+        }
     }
     
     function handleFileUploads(files) {
@@ -438,6 +618,47 @@ document.addEventListener('DOMContentLoaded', () => {
         sortAndDisplayData(); 
         resultsCountDiv.textContent = `Displaying ${dataToBrowse.length} row(s).`;
         toggleDownloadButtons(dataToBrowse.length > 0);
+
+        // Update URL to reflect current browse selection
+        try {
+            updateUrlForBrowseSelection(selectedFileName);
+        } catch (e) {
+            console.warn('Could not update URL for browse selection', e);
+        }
+    }
+
+    function updateUrlForBrowseSelection(selectedValue) {
+        if (typeof window === 'undefined' || !window.history || !window.location) return;
+        // Build base path (directory hosting the app). Keep trailing slash.
+        let base = window.location.pathname || '/';
+        if (base.endsWith('index.html')) base = base.slice(0, -'index.html'.length);
+        if (!base.endsWith('/')) base = base.replace(/[^\/]*$/, '');
+
+        if (!selectedValue || selectedValue === 'all') {
+            // clear organism-specific part, keep current search/query
+            const newUrl = base;
+            history.replaceState(null, '', newUrl + window.location.search);
+            return;
+        }
+
+        if (selectedValue.includes('::')) {
+            const parts = selectedValue.split('::');
+            const fileKey = parts[0];
+            const orgEncoded = parts.slice(1).join('::');
+            let orgRaw = orgEncoded;
+            try { orgRaw = decodeURIComponent(orgEncoded); } catch (e) {}
+            // Use query param ?organism= so multi-organism selections are linkable and consistent
+            const orgForParam = orgRaw.replace(/\s+/g, '_');
+            const newUrl = base + '?organism=' + encodeURIComponent(orgForParam);
+            history.replaceState(null, '', newUrl);
+            return;
+        }
+
+        // file-level selection: set an organism query param so it's linkable
+        const fileBase = selectedValue.replace(/\.txt$/i, '');
+        const fileForParam = fileBase.replace(/\s+/g, '_');
+        const newUrl = base + '?organism=' + encodeURIComponent(fileForParam);
+        history.replaceState(null, '', newUrl);
     }
 
     function performBrowseSearch() {
@@ -532,10 +753,33 @@ document.addEventListener('DOMContentLoaded', () => {
         sortDirection = 'asc';
         sortAndDisplayData();
         resultsCountDiv.textContent = `Found ${matchedRows.length} match(es).`;
+        // update URL to reflect search
+        try {
+            updateUrlForSearch(searchTerm, selectedSearchCol);
+        } catch (e) {
+            console.warn('Could not update URL for search', e);
+        }
         toggleDownloadButtons(matchedRows.length > 0);
         if (matchedRows.length === 0) {
              searchResultsDiv.innerHTML = '<p>No results found.</p>';
         }
+    }
+
+    function updateUrlForSearch(term, column) {
+        if (typeof window === 'undefined' || !window.history || !window.location) return;
+        let base = window.location.pathname || '/';
+        if (base.endsWith('index.html')) base = base.slice(0, -'index.html'.length);
+        if (!base.endsWith('/')) base = base.replace(/[^\/]*$/, '');
+
+        const encoded = encodeURIComponent(term);
+        let q = '';
+        if (column && column !== 'all') {
+            if (column === 'ruleID') q = `?rule=${encoded}`;
+            else q = `?${encodeURIComponent(column)}=${encoded}`;
+        } else {
+            q = `?q=${encoded}`;
+        }
+        history.replaceState(null, '', base + q);
     }
 
     function updateLoadedFilesList(fileNames) {

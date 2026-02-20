@@ -280,7 +280,7 @@ tr:hover {
 .browse-search-inline {
     display: flex;
     gap: 8px;
-    align-items: center;
+    align-items: baseline;
 }
 .browse-search-inline input[type="text"] {
     flex: 1 1 auto;
@@ -304,6 +304,15 @@ tr:hover {
 .download-buttons-inline button {
     margin-left: 8px;
 }
+
+#copyLinkButton {
+    margin-left: 8px;
+}
+
+.copy-success {
+    background-color: #28a745 !important;
+}
+
 
 /* Columns panel */
 .columns-panel {
