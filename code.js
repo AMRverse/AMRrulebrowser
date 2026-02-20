@@ -613,6 +613,19 @@ document.addEventListener('DOMContentLoaded', () => {
              .replace(/'/g, "&#039;");
     }
 
+    // Create a single shared custom tooltip element for fast, responsive header tooltips
+    const customTooltip = document.createElement('div');
+    customTooltip.className = 'custom-tooltip';
+    customTooltip.style.display = 'none';
+    document.body.appendChild(customTooltip);
+
+    // Mapping of column headers to spec documentation URLs for the info icon
+    const INFO_LINKS = {
+        'variation type': 'https://amrrules.readthedocs.io/en/genome_summary_report_dev/specification.html#variation-type',
+        'evidence code': 'https://amrrules.readthedocs.io/en/genome_summary_report_dev/specification.html#evidence-codes',
+        'mutation': 'https://amrrules.readthedocs.io/en/genome_summary_report_dev/specification.html#syntax-for-mutations'
+    };
+
     function generateLink(headerKey, value) {
         let sValue = String(value).trim(); // Trim immediately when converting to string
         
@@ -765,7 +778,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const th = document.createElement('th');
             th.textContent = headerKey;
             th.dataset.columnKey = headerKey;
-            th.title = HEADER_TOOLTIPS[headerKey] || headerKey;
+
+            // Attach tooltip text to the header cell (used by custom tooltip)
+            const tooltipText = HEADER_TOOLTIPS[headerKey];
+            if (tooltipText) {
+                th.dataset.tooltip = tooltipText;
+            }
 
             const arrowSpan = document.createElement('span');
             arrowSpan.classList.add('sort-arrow');
@@ -774,7 +792,47 @@ document.addEventListener('DOMContentLoaded', () => {
                 arrowSpan.innerHTML = sortDirection === 'asc' ? ' ↑' : ' ↓';
             }
             th.appendChild(arrowSpan);
-            
+
+            // Add an info icon/link next to the header when applicable
+            const infoUrl = INFO_LINKS[headerKey];
+            if (infoUrl) {
+                const infoLink = document.createElement('a');
+                infoLink.href = infoUrl;
+                infoLink.target = '_blank';
+                infoLink.rel = 'noopener noreferrer';
+                infoLink.className = 'info-icon';
+                infoLink.title = 'Open specification';
+                infoLink.innerHTML = 'i';
+                // Prevent header click (sort) when clicking the info icon
+                infoLink.addEventListener('click', (ev) => ev.stopPropagation());
+                th.appendChild(infoLink);
+            }
+
+            // Show custom tooltip when mouse is within the header cell (fast, responsive)
+            th.addEventListener('mouseenter', (e) => {
+                const tip = th.dataset.tooltip;
+                if (!tip) return;
+                customTooltip.textContent = tip;
+                customTooltip.style.display = 'block';
+                // Initial position below header
+                const rect = th.getBoundingClientRect();
+                const top = rect.bottom + 6;
+                let left = rect.left + 6;
+                customTooltip.style.top = `${top}px`;
+                customTooltip.style.left = `${left}px`;
+            });
+            th.addEventListener('mousemove', (e) => {
+                if (customTooltip.style.display === 'none') return;
+                const tooltipWidth = customTooltip.offsetWidth || 200;
+                let left = e.clientX + 12;
+                if (left + tooltipWidth > window.innerWidth - 8) left = window.innerWidth - tooltipWidth - 8;
+                customTooltip.style.left = `${left}px`;
+                customTooltip.style.top = `${e.clientY + 16}px`;
+            });
+            th.addEventListener('mouseleave', () => {
+                customTooltip.style.display = 'none';
+            });
+
             th.addEventListener('click', () => {
                 if (sortColumnKey === headerKey) {
                     sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
