@@ -776,6 +776,58 @@ document.addEventListener('DOMContentLoaded', () => {
         const table = document.createElement('table');
         const thead = document.createElement('thead');
         const headerRow = document.createElement('tr');
+        // Build colgroup with proportional widths and per-column wrap/no-wrap classes
+        const colgroup = document.createElement('colgroup');
+
+        // Heuristic weights for columns (higher = wider)
+        const WIDTH_HINTS = {
+            'ruleID': 6,
+            'txid': 5,
+            'organism': 8,
+            'gene': 6,
+            'nodeID': 5,
+            'protein accession': 6,
+            'HMM accession': 6,
+            'nucleotide accession': 6,
+            'ARO accession': 6,
+            'mutation': 10,
+            'variation type': 6,
+            'gene context': 10,
+            'drug': 8,
+            'drug class': 7,
+            'phenotype': 6,
+            'clinical category': 6,
+            'breakpoint': 5,
+            'breakpoint standard': 5,
+            'breakpoint condition': 6,
+            'PMID': 5,
+            'evidence code': 8,
+            'evidence grade': 4,
+            'evidence description': 12,
+            'evidence limitations': 10,
+            'rule curation note': 12
+        };
+
+        // Columns that should not wrap
+        const NOWRAP_COLUMNS = new Set(['ruleID', 'txid', 'PMID', 'evidence grade', 'nodeID', 'protein accession', 'nucleotide accession']);
+
+        // Determine total weight
+        let totalWeight = 0;
+        const weights = headers.map(h => {
+            const w = WIDTH_HINTS[h] || 6;
+            totalWeight += w;
+            return w;
+        });
+
+        headers.forEach((headerKey, idx) => {
+            const col = document.createElement('col');
+            const pct = Math.max(5, Math.round((weights[idx] / totalWeight) * 100));
+            col.style.width = pct + '%';
+            if (NOWRAP_COLUMNS.has(headerKey)) col.className = 'col-nowrap';
+            else col.className = 'col-wrap';
+            colgroup.appendChild(col);
+        });
+        table.appendChild(colgroup);
 
         headers.forEach(headerKey => {
             const th = document.createElement('th');
@@ -795,6 +847,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 arrowSpan.innerHTML = sortDirection === 'asc' ? ' ↑' : ' ↓';
             }
             th.appendChild(arrowSpan);
+            // Apply nowrap/wrap classes to header
+            if (NOWRAP_COLUMNS && NOWRAP_COLUMNS.has(headerKey)) th.classList.add('col-nowrap');
+            else th.classList.add('col-wrap');
 
             // Add an info icon/link next to the header when applicable
             const infoUrl = INFO_LINKS[headerKey];

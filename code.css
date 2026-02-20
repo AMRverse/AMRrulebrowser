@@ -8,22 +8,13 @@ body {
 }
 
 .container {
-    max-width: 900px; /* Adjusted for potentially wider tables */
-    margin: auto;
+    width: 100%;
+    max-width: none; /* Use full window width */
+    margin: 0; /* Align to window edges for maximum space */
     background: #fff;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-@media (min-width: 1200px) { /* Allow wider container for larger screens */
-    .container {
-        max-width: 1100px;
-    }
-}
-@media (min-width: 1600px) {
-    .container {
-        max-width: 1500px;
-    }
+    padding: 18px 20px 28px 20px;
+    border-radius: 6px;
+    box-shadow: none;
 }
 
 
@@ -58,7 +49,7 @@ h1 {
 label {
     display: block;
     margin-bottom: 5px;
-    margin-top: 10px; 
+    margin-top: 0px;
 }
 
 input[type="file"], input[type="text"], select {
@@ -66,9 +57,9 @@ input[type="file"], input[type="text"], select {
     margin-right: 10px;
     border: 1px solid #ddd;
     border-radius: 4px;
-    width: calc(100% - 22px); 
+    width: 100%;
     box-sizing: border-box;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
 
 input[type="file"] {
@@ -79,12 +70,12 @@ input[type="file"] {
 
 
 #searchResults {
-    max-height: 600px; /* Increased height */
-    overflow-y: auto;  
-    overflow-x: auto;  
-    margin-top: 10px;  
-    padding-right: 1px; 
-    border: 1px solid #ddd; /* Added border for clarity */
+    max-height: calc(100vh - 260px); /* Use more vertical space */
+    overflow-y: auto;
+    overflow-x: auto;
+    margin-top: 10px;
+    padding-right: 1px;
+    border: 1px solid #ddd;
 }
 
 button {
@@ -174,29 +165,36 @@ button:hover {
     display: none;
 }
 
+
 table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.9em; /* Slightly smaller font for tables */
+    font-size: 0.92em;
+    table-layout: fixed; /* Fixed table layout so col widths are respected */
 }
 
 th, td {
     border: 1px solid #ddd;
-    padding: 6px; /* Adjusted padding */
+    padding: 8px;
     text-align: left;
-    white-space: nowrap; /* Prevent text wrapping in cells by default */
+    white-space: normal; /* Allow wrapping so table adapts to viewport */
+    vertical-align: top;
 }
 
 td {
-    max-width: 300px; /* Limit cell width */
-    overflow: hidden;
-    text-overflow: ellipsis; /* Add ellipsis for overflowed content */
+    max-width: none;
+    overflow-wrap: anywhere;
 }
 
-td:hover { /* Show full content on hover */
-    white-space: normal;
-    overflow: visible;
-    max-width: none;
+/* Per-column wrapping control */
+.col-nowrap {
+    white-space: nowrap !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.col-wrap {
+    white-space: normal !important;
+    overflow-wrap: anywhere;
 }
 
 
@@ -262,6 +260,49 @@ tr:hover {
         white-space: normal; /* Allow wrapping on small screens */
          font-size: 0.8em;
     }
+}
+
+/* Controls row: place organism selector and search inline */
+.controls-row {
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+}
+.controls-left {
+    min-width: 220px;
+    flex: 0 0 320px;
+}
+.controls-right {
+    flex: 1 1 480px;
+}
+.browse-search-inline {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.browse-search-inline input[type="text"] {
+    flex: 1 1 auto;
+}
+
+/* Results top area */
+.results-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+.results-top-left {
+    display: flex;
+    flex-direction: column;
+}
+.results-top-right {
+    display: flex;
+    align-items: center;
+}
+.download-buttons-inline button {
+    margin-left: 8px;
 }
 
 /* Footer Styles */

@@ -40,16 +40,23 @@
 
         <!-- Browse Section - Initially visible -->
         <div id="browseControlsSection" class="browse-section">
-            <label for="browseFileSelect">Select an organism to browse:</label>
-            <select id="browseFileSelect">
-                <option value="all">All organisms</option>
-                <!-- File names will be populated here -->
-            </select>
-            <br><br>
-            <label for="browseSearchInput">Search in results:</label>
-            <input type="text" id="browseSearchInput" placeholder="Enter search term...">
-            <button id="browseSearchButton">Search</button>
-            <button id="browseSearchClearButton">Clear</button>
+            <div class="controls-row">
+                <div class="controls-left">
+                    <label for="browseFileSelect">Select an organism to browse:</label>
+                    <select id="browseFileSelect">
+                        <option value="all">All organisms</option>
+                        <!-- File names will be populated here -->
+                    </select>
+                </div>
+                <div class="controls-right">
+                    <label for="browseSearchInput">Search in results:</label>
+                    <div class="browse-search-inline">
+                        <input type="text" id="browseSearchInput" placeholder="Enter search term...">
+                        <button id="browseSearchButton">Search</button>
+                        <button id="browseSearchClearButton">Clear</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Search Section - Initially hidden -->
@@ -65,14 +72,20 @@
         </div>
 
         <div class="results-section">
-            <h2 id="resultsHeader">Browse results:</h2>
-            <div id="resultsCount"></div>
+            <div class="results-top">
+                <div class="results-top-left">
+                    <h2 id="resultsHeader">Browse results:</h2>
+                    <div id="resultsCount"></div>
+                </div>
+                <div class="results-top-right">
+                    <div class="download-buttons-inline">
+                        <button id="downloadTsvButton" disabled>Download TSV</button>
+                        <button id="downloadCsvButton" disabled>Download CSV</button>
+                    </div>
+                </div>
+            </div>
             <div id="searchResults">
                 <!-- Search/Browse results will appear here -->
-            </div>
-            <div class="download-buttons">
-                <button id="downloadTsvButton" disabled>Download results as TSV</button>
-                <button id="downloadCsvButton" disabled>Download results as CSV</button>
             </div>
         </div>
 
