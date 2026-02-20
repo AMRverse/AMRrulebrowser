@@ -1,5 +1,8 @@
 [![GitHub version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/AMRverse/AMRrulebrowser)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
+<!-- Language flags -->
+[🇫🇷](README.fr.md) • [🇧🇷](README.pt-BR.md) • [🇪🇸](README.es.md)
 <!-- [![DOI](https://zenodo.org/badge/615052960.svg)](https://zenodo.org/doi/10.5281/zenodo.10810218) -->
 
 <img src="logo.png" width="180" align="center">
@@ -17,4 +20,24 @@ Full specification: [AMRrules spec v0.6](https://docs.google.com/spreadsheets/d/
 
 Rule curation is a work in progress, under active development by the [ESGEM-AMR](https://github.com/AMRverse/AMRrulesCuration/) Working Group.
 
-See the deep-linking examples and usage notes in [usage.md](usage.md).
+## See the examples of usage/search
+
+You can construct shareable links to open the browser pre-filtered by organism or search terms. Examples below assume the app is hosted at `https://amrverse.github.io/AMRrulebrowser/` or running locally (e.g., `http://localhost:8000/`).
+
+- Browse a specific organism (uses underscores instead of spaces):
+
+  - `https://amrverse.github.io/AMRrulebrowser/?organism=Escherichia_coli`
+
+- Search for a drug across all files:
+
+  - `https://amrverse.github.io/AMRrulebrowser/?drug=amikacin`
+
+- Combined search (organism + search):
+
+  - `https://amrverse.github.io/AMRrulebrowser/?organism=Escherichia_coli&drug=amikacin`
+
+Notes:
+
+- `?organism=` accepts underscores in place of spaces and is case-insensitive.
+- `?drug=`, `?gene=`, `?rule=` or `?q=` perform searches (query names prefer `drug`, `gene`, `rule`, otherwise `q`).
+- For maximum portability on simple static servers use the query-style links above (path-style links require an SPA-aware server).
