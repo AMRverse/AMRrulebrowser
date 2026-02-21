@@ -28,6 +28,7 @@ body {
     height: 100px; /* Adjust as needed */
     width: auto; /* Maintain aspect ratio */
     margin-right: 15px; /* Space between logo and title */
+    max-width: 100%; /* Prevent overflow on very small screens */
 }
 
 h1, h2, h3 {
@@ -50,6 +51,7 @@ label {
     display: block;
     margin-bottom: 5px;
     margin-top: 0px;
+    font-size: 14px;
 }
 
 input[type="file"], input[type="text"], select {
@@ -60,6 +62,9 @@ input[type="file"], input[type="text"], select {
     width: 100%;
     box-sizing: border-box;
     margin-bottom: 8px;
+    font-size: 16px; /* Prevent iOS auto-zoom on input focus */
+    min-height: 44px; /* Touch-friendly minimum height */
+    display: block;
 }
 
 input[type="file"] {
@@ -76,6 +81,8 @@ input[type="file"] {
     margin-top: 10px;
     padding-right: 1px;
     border: 1px solid #ddd;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    scroll-behavior: smooth;
 }
 
 button {
@@ -87,6 +94,12 @@ button {
     cursor: pointer;
     margin-top: 5px; 
     margin-right: 5px;
+    min-height: 44px; /* Minimum touch target size */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    transition: background-color 0.2s ease;
 }
 
 button:hover {
@@ -239,14 +252,27 @@ tr:nth-child(even) {
 tr:hover {
     background-color: #f1e8f3; /* Lighter purple hover for rows */
 }
-/* Basic responsiveness for smaller screens */
+/* =========================
+   RESPONSIVE DESIGN BREAKPOINTS
+   ========================= */
+
+/* Tablet devices (768px and below) */
 @media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
     .container {
-        padding: 15px;
+        padding: 12px 15px 20px 15px;
     }
     input[type="text"], select {
         width: 100%; 
         margin-right: 0;
+        margin-bottom: 10px;
+        font-size: 16px; /* Prevent zoom on iOS */
+    }
+    button {
+        padding: 12px 10px; /* Ensure tappable size (44px min height) */
+        font-size: 14px;
         margin-bottom: 10px;
     }
     .header-section {
@@ -254,11 +280,156 @@ tr:hover {
         align-items: flex-start;
     }
     #logo {
+        height: 70px;
         margin-bottom: 10px;
+        margin-right: 0;
+    }
+    h1 {
+        font-size: 1.5em;
+    }
+    h2 {
+        font-size: 1.2em;
     }
     th, td {
-        white-space: normal; /* Allow wrapping on small screens */
-         font-size: 0.8em;
+        white-space: normal;
+        font-size: 0.85em;
+        padding: 6px;
+    }
+    .controls-row {
+        flex-direction: column;
+        gap: 12px;
+    }
+    .controls-left, .controls-right {
+        width: 100%;
+        min-width: auto;
+        flex: none;
+    }
+    .browse-search-inline {
+        flex-direction: column;
+        gap: 8px;
+    }
+    .browse-search-inline input[type="text"],
+    .browse-search-inline button {
+        width: 100%;
+        margin: 0;
+    }
+    .results-top {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .results-top-right {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+    .download-buttons-inline {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+    .download-buttons-inline button {
+        margin: 0;
+        width: 100%;
+    }
+    #columnsToggle, #copyLinkButton {
+        margin-left: 0;
+    }
+    .columns-panel {
+        position: fixed;
+        left: 10px;
+        right: 10px;
+        top: auto;
+        bottom: auto;
+        max-width: none;
+        min-width: auto;
+    }
+    #searchResults {
+        max-height: calc(100vh - 400px);
+    }
+}
+
+/* Small mobile phones (480px and below) */
+@media (max-width: 480px) {
+    body {
+        padding: 8px;
+    }
+    .container {
+        padding: 10px 12px 20px 12px;
+        border-radius: 0;
+    }
+    input[type="text"], select, button {
+        font-size: 16px; /* Prevent auto-zoom on iOS */
+    }
+    button {
+        padding: 12px 8px; /* Ensure minimum 44px tap target */
+        width: 100%;
+        margin: 5px 0;
+    }
+    #logo {
+        height: 50px;
+    }
+    h1 {
+        font-size: 1.3em;
+        margin-bottom: 10px;
+    }
+    h2 {
+        font-size: 1.1em;
+    }
+    h3 {
+        font-size: 1em;
+    }
+    label {
+        font-size: 0.95em;
+        margin-bottom: 5px;
+    }
+    .controls, .search-section, .browse-section, .status, .mode-selection {
+        margin-bottom: 15px;
+        padding-bottom: 12px;
+    }
+    th, td {
+        font-size: 0.75em;
+        padding: 4px;
+    }
+    table {
+        font-size: 0.8em;
+    }
+    .download-buttons-inline {
+        grid-template-columns: 1fr;
+    }
+    #searchResults {
+        max-height: calc(100vh - 420px);
+        font-size: 14px;
+    }
+    .columns-panel {
+        left: 8px;
+        right: 8px;
+    }
+    .columns-panel-inner {
+        max-height: 300px;
+    }
+    .result-item {
+        padding: 8px;
+        margin-bottom: 8px;
+    }
+}
+
+/* Very small devices (320px and below) - edge case */
+@media (max-width: 320px) {
+    body {
+        padding: 5px;
+    }
+    .container {
+        padding: 8px 10px;
+    }
+    #logo {
+        height: 40px;
+    }
+    h1 {
+        font-size: 1.1em;
+    }
+    th, td {
+        font-size: 0.7em;
+        padding: 3px;
     }
 }
 
@@ -276,14 +447,20 @@ tr:hover {
 }
 .controls-right {
     flex: 1 1 480px;
+    min-width: 200px; /* Ensure minimum width */
 }
 .browse-search-inline {
     display: flex;
     gap: 8px;
     align-items: baseline;
+    flex-wrap: wrap;
 }
 .browse-search-inline input[type="text"] {
     flex: 1 1 auto;
+    min-width: 150px;
+}
+.browse-search-inline button {
+    white-space: nowrap;
 }
 
 /* Results top area */
@@ -326,6 +503,9 @@ tr:hover {
     border-radius: 4px;
     z-index: 2000;
     min-width: 220px;
+    max-height: 70vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 .columns-panel-inner {
     max-height: 360px;
