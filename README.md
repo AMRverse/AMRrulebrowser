@@ -1,6 +1,6 @@
 [![GitHub version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/AMRverse/AMRrulebrowser)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) [🇫🇷](README.fr.md) • [🇧🇷](README.pt-BR.md) • [🇪🇸](README.es.md)
-<!-- [![DOI](https://zenodo.org/badge/615052960.svg)](https://zenodo.org/doi/10.5281/zenodo.10810218) -->
+[![DOI](https://zenodo.org/badge/615052960.svg)](https://zenodo.org/doi/10.5281/zenodo.10810218)
 
 <img src="logo.png" width="180" align="center">
 
