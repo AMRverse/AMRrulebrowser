@@ -60,6 +60,6 @@ Notes:
   - `breakpoint condition`
   - `ARO accession`
   - `rule curation note`
-- **Help links**: Info icons (ⓘ) next to certain column headers link to detailed specification documentation
+- **Help links**: Info icons ⓘ next to certain column headers link to detailed specification documentation
 - **Download options**: Export search/browse results as TSV file
 - **Responsive design**: Works on desktop and mobile devices with horizontal scrolling for large tables
