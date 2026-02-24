@@ -181,8 +181,9 @@ button:hover {
 
 table {
     width: 100%;
+    min-width: 1600px;
     border-collapse: collapse;
-    font-size: 0.92em;
+    font-size: 0.85em;
     table-layout: fixed; /* Fixed table layout so col widths are respected */
 }
 
@@ -331,7 +332,7 @@ tr:hover {
         margin: 0;
         width: 100%;
     }
-    #columnsToggle, #copyLinkButton {
+    #columnsToggle {
         margin-left: 0;
     }
     .columns-panel {
@@ -452,8 +453,8 @@ tr:hover {
 .browse-search-inline {
     display: flex;
     gap: 8px;
-    align-items: baseline;
-    flex-wrap: wrap;
+    align-items: center;
+    flex-wrap: nowrap;
 }
 .browse-search-inline input[type="text"] {
     flex: 1 1 auto;
@@ -482,13 +483,7 @@ tr:hover {
     margin-left: 8px;
 }
 
-#copyLinkButton {
-    margin-left: 8px;
-}
 
-.copy-success {
-    background-color: #28a745 !important;
-}
 
 
 /* Columns panel */

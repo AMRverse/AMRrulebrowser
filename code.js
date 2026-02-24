@@ -11,7 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultsCountDiv = document.getElementById('resultsCount');
     const downloadTsvButton = document.getElementById('downloadTsvButton');
     const downloadCsvButton = document.getElementById('downloadCsvButton');
-    const copyLinkButton = document.getElementById('copyLinkButton');
 
     const browseModeRadio = document.getElementById('browseMode');
     const searchModeRadio = document.getElementById('searchMode');
@@ -42,7 +41,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const ACCESSION_URLS = {
         'protein accession': 'https://www.ncbi.nlm.nih.gov/protein/',
         'nucleotide accession': 'https://www.ncbi.nlm.nih.gov/nuccore/',
-        'txid': 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=',
         'PMID': 'https://pubmed.ncbi.nlm.nih.gov/',
         'ARO accession': 'https://card.mcmaster.ca/aro/',
         'evidence code': 'https://evidenceontology.org/term/',
@@ -89,6 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let sortColumnKey = '';
     let sortDirection = 'asc';
     let originalBrowseData = []; // Track original browse data before filtering
+    let currentBrowseSearchTerm = ''; // Track current browse search term for URL updates
     let DRUG_ARO_MAP = {}; // Maps drug names to ARO IDs
     let CLASS_ARO_MAP = {}; // Maps drug class names to ARO IDs
 
@@ -234,34 +233,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     downloadTsvButton.addEventListener('click', () => downloadCurrentData('tsv'));
     downloadCsvButton.addEventListener('click', () => downloadCurrentData('csv'));
-    if (copyLinkButton) {
-        copyLinkButton.addEventListener('click', async () => {
-            try {
-                const urlToCopy = window.location.href;
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    await navigator.clipboard.writeText(urlToCopy);
-                } else {
-                    // Fallback for older browsers
-                    const tmp = document.createElement('input');
-                    tmp.value = urlToCopy;
-                    document.body.appendChild(tmp);
-                    tmp.select();
-                    document.execCommand('copy');
-                    document.body.removeChild(tmp);
-                }
-                const original = copyLinkButton.textContent;
-                copyLinkButton.textContent = 'Copied!';
-                copyLinkButton.disabled = true;
-                setTimeout(() => {
-                    copyLinkButton.textContent = original;
-                    copyLinkButton.disabled = false;
-                }, 1400);
-            } catch (err) {
-                console.warn('Could not copy link', err);
-                alert('Unable to copy link to clipboard. You can manually copy the page URL from the address bar.');
-            }
-        });
-    }
 
     // --- Core Functions ---
     async function initializeApplication() {
@@ -477,20 +448,47 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        if (params.has('drug') || params.has('gene') || params.has('rule') || params.has('search') || params.has('q')) {
-            const searchVal = params.get('drug') || params.get('gene') || params.get('rule') || params.get('search') || params.get('q');
+        if (params.has('drug') || params.has('gene') || params.has('ruleID') || params.has('rule') || params.has('search') || params.has('q')) {
+            const searchVal = params.get('drug') || params.get('gene') || params.get('ruleID') || params.get('rule') || params.get('search') || params.get('q');
             if (searchVal) {
-                let col = 'all';
-                if (params.has('drug')) col = 'drug';
-                else if (params.has('gene')) col = 'gene';
-                else if (params.has('rule')) col = 'ruleID';
-
-                searchModeRadio.checked = true;
+                // Always stay in browse mode - apply search to browse results instead
+                browseModeRadio.checked = true;
                 handleModeChange();
-                searchInput.value = searchVal;
-                const opt = Array.from(columnSelect.options).find(o => o.value === col);
-                if (opt) columnSelect.value = col;
-                performSearch();
+                
+                // Set organism if provided, otherwise use 'all'
+                if (params.has('organism') || params.has('org') || params.has('o')) {
+                    const orgVal = params.get('organism') || params.get('org') || params.get('o');
+                    const fileKey = findFileKeyByOrganismParam(orgVal, storedData);
+                    if (fileKey) {
+                        const rawParam = String(orgVal);
+                        const targetNorm = normalizeKey(rawParam.replace(/_/g, ' '));
+                        let matchedOptionValue = null;
+                        const opts = Array.from(browseFileSelect.querySelectorAll('option'));
+                        for (const o of opts) {
+                            if (!o.value) continue;
+                            if (!o.value.startsWith(fileKey + '::')) continue;
+                            const parts = o.value.split('::');
+                            const enc = parts.slice(1).join('::');
+                            try {
+                                const orgRaw = decodeURIComponent(enc);
+                                if (normalizeKey(orgRaw) === targetNorm) {
+                                    matchedOptionValue = o.value;
+                                    break;
+                                }
+                            } catch (e) {}
+                        }
+                        if (matchedOptionValue) browseFileSelect.value = matchedOptionValue;
+                        else browseFileSelect.value = fileKey;
+                    }
+                } else {
+                    browseFileSelect.value = 'all';
+                }
+                
+                // Trigger browse to load data, then apply search
+                triggerBrowse();
+                browseSearchInput.value = searchVal;
+                currentBrowseSearchTerm = searchVal.toLowerCase();
+                performBrowseSearch();
             }
         }
     }
@@ -613,9 +611,10 @@ document.addEventListener('DOMContentLoaded', () => {
         originalBrowseData = dataToBrowse;
         currentDataForDisplayAndDownload = dataToBrowse;
         browseSearchInput.value = ''; // Clear browse search input when switching organisms
+        currentBrowseSearchTerm = ''; // Clear search term when switching organisms
         sortColumnKey = ''; // Reset sort when browsing new data
         sortDirection = 'asc';
-        sortAndDisplayData(); 
+        sortAndDisplayData();
         resultsCountDiv.textContent = `Displaying ${dataToBrowse.length} row(s).`;
         toggleDownloadButtons(dataToBrowse.length > 0);
 
@@ -627,17 +626,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function updateUrlForBrowseSelection(selectedValue) {
+    function updateUrlForBrowseSelection(selectedValue, searchTerm) {
         if (typeof window === 'undefined' || !window.history || !window.location) return;
         // Build base path (directory hosting the app). Keep trailing slash.
         let base = window.location.pathname || '/';
         if (base.endsWith('index.html')) base = base.slice(0, -'index.html'.length);
         if (!base.endsWith('/')) base = base.replace(/[^\/]*$/, '');
 
+        // Use provided searchTerm or current state variable
+        const activeTerm = searchTerm !== undefined ? searchTerm : currentBrowseSearchTerm;
+
         if (!selectedValue || selectedValue === 'all') {
-            // clear organism-specific part, keep current search/query
-            const newUrl = base;
-            history.replaceState(null, '', newUrl + window.location.search);
+            // If search term exists, include it
+            if (activeTerm) {
+                const newUrl = base + '?search=' + encodeURIComponent(activeTerm);
+                history.replaceState(null, '', newUrl);
+            } else {
+                // Clear organism-specific part
+                const newUrl = base;
+                history.replaceState(null, '', newUrl);
+            }
             return;
         }
 
@@ -649,7 +657,12 @@ document.addEventListener('DOMContentLoaded', () => {
             try { orgRaw = decodeURIComponent(orgEncoded); } catch (e) {}
             // Use query param ?organism= so multi-organism selections are linkable and consistent
             const orgForParam = orgRaw.replace(/\s+/g, '_');
-            const newUrl = base + '?organism=' + encodeURIComponent(orgForParam);
+            
+            // Include search term if present
+            let newUrl = base + '?organism=' + encodeURIComponent(orgForParam);
+            if (activeTerm) {
+                newUrl += '&search=' + encodeURIComponent(activeTerm);
+            }
             history.replaceState(null, '', newUrl);
             return;
         }
@@ -657,12 +670,16 @@ document.addEventListener('DOMContentLoaded', () => {
         // file-level selection: set an organism query param so it's linkable
         const fileBase = selectedValue.replace(/\.txt$/i, '');
         const fileForParam = fileBase.replace(/\s+/g, '_');
-        const newUrl = base + '?organism=' + encodeURIComponent(fileForParam);
+        let newUrl = base + '?organism=' + encodeURIComponent(fileForParam);
+        if (activeTerm) {
+            newUrl += '&search=' + encodeURIComponent(activeTerm);
+        }
         history.replaceState(null, '', newUrl);
     }
 
     function performBrowseSearch() {
         const searchTerm = browseSearchInput.value.trim().toLowerCase();
+        currentBrowseSearchTerm = searchTerm; // Track for URL updates
         
         if (!searchTerm) {
             alert('Please enter a search term.');
@@ -685,16 +702,31 @@ document.addEventListener('DOMContentLoaded', () => {
         if (matchedRows.length === 0) {
              searchResultsDiv.innerHTML = '<p>No results found.</p>';
         }
+        
+        // Update URL to reflect current browse state (organism + search term)
+        try {
+            updateUrlForBrowseSelection(browseFileSelect.value, searchTerm);
+        } catch (e) {
+            console.warn('Could not update URL for browse search', e);
+        }
     }
 
     function clearBrowseSearch() {
         browseSearchInput.value = '';
+        currentBrowseSearchTerm = ''; // Clear search term
         currentDataForDisplayAndDownload = originalBrowseData;
         sortColumnKey = '';
         sortDirection = 'asc';
         sortAndDisplayData();
         resultsCountDiv.textContent = `Displaying ${originalBrowseData.length} row(s).`;
         toggleDownloadButtons(originalBrowseData.length > 0);
+        
+        // Update URL to remove search term
+        try {
+            updateUrlForBrowseSelection(browseFileSelect.value);
+        } catch (e) {
+            console.warn('Could not update URL for browse clear', e);
+        }
     }
 
     function performSearch() {
@@ -880,7 +912,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }).filter(row => {
             // Filter out specific ruleIDs (handle potential quote characters)
             const ruleID = String(row.ruleID || '').trim().replace(/"/g, '');
-            const blockedRuleIDs = ['24566181', 'KOX0008', 'KOX0009'];
+            const blockedRuleIDs = [];
             if (blockedRuleIDs.includes(ruleID)) {
                 return false;
             }
@@ -914,10 +946,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const INFO_LINKS = {
         'variation type': 'https://amrrules.readthedocs.io/en/genome_summary_report_dev/specification.html#variation-type',
         'evidence code': 'https://amrrules.readthedocs.io/en/genome_summary_report_dev/specification.html#evidence-codes',
-        'mutation': 'https://amrrules.readthedocs.io/en/genome_summary_report_dev/specification.html#syntax-for-mutations'
+        'mutation': 'https://amrrules.readthedocs.io/en/genome_summary_report_dev/specification.html#syntax-for-mutations',
+        'evidence grade': 'https://amrrules.readthedocs.io/en/genome_summary_report_dev/specification.html#evidence-grade',
+        'evidence limitations': 'https://amrrules.readthedocs.io/en/genome_summary_report_dev/specification.html#evidence-limitations'
     };
 
-    function generateLink(headerKey, value) {
+    function generateLink(headerKey, value, rowData) {
         let sValue = String(value).trim(); // Trim immediately when converting to string
         
         // Remove "s__" prefix from organism column
@@ -932,6 +966,20 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (!sValue || sValue === '-' || sValue.trim() === '') {
             return sValue; // Return original non-values as is
+        }
+        
+        // Handle organism column: create link using txid from row data
+        if (headerKey === 'organism' && rowData && rowData.txid) {
+            const txidValue = String(rowData.txid).trim();
+            if (txidValue && txidValue !== '-') {
+                const TXID_URL = 'https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi?id=';
+                return `<a href="${TXID_URL}${encodeURIComponent(txidValue)}" target="_blank">${escapeHtml(sValue)}</a>`;
+            }
+        }
+        
+        // Skip linking for txid column
+        if (headerKey === 'txid') {
+            return escapeHtml(sValue);
         }
 
         // Handle drug and drug class fields with CARD mappings (using normalized lookups)
@@ -1093,7 +1141,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'evidence grade': 4,
             'evidence description': 12,
             'evidence limitations': 10,
-            'rule curation note': 12
+            'rule curation note': 18
         };
 
         // Columns that should not wrap
@@ -1223,7 +1271,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers.forEach(headerKey => {
                     const td = document.createElement('td');
                     const cellValue = rowDataItem[headerKey] === undefined ? '' : rowDataItem[headerKey];
-                    td.innerHTML = generateLink(headerKey, cellValue);
+                    td.innerHTML = generateLink(headerKey, cellValue, rowDataItem);
 
                     // If this is an evidence grade cell, attach the shared custom tooltip to the whole cell
                     if (headerKey === 'evidence grade') {
@@ -1303,15 +1351,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Column show/hide management
     const COLUMN_PREF_KEY = 'amrrules_hidden_columns_v1';
+    const DEFAULT_HIDDEN_COLUMNS = ['txid', 'breakpoint condition', 'ARO accession', 'rule curation note'];
 
     function getHiddenColumnsFromStorage() {
         try {
             const raw = localStorage.getItem(COLUMN_PREF_KEY);
-            if (!raw) return new Set();
+            if (!raw) return new Set(DEFAULT_HIDDEN_COLUMNS);
             const arr = JSON.parse(raw);
             return new Set(arr);
         } catch (e) {
-            return new Set();
+            return new Set(DEFAULT_HIDDEN_COLUMNS);
         }
     }
 
@@ -1423,7 +1472,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
         link.setAttribute("href", url);
-        link.setAttribute("download", `amrrules_data.${format}`);
+        link.setAttribute("download", `AMRruleBrowser_data.${format}`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();

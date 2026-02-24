@@ -25,16 +25,40 @@ You can construct shareable links to open the browser pre-filtered by organism o
 
   - `https://amrverse.github.io/AMRrulebrowser/?organism=Escherichia_coli`
 
-- Search for a drug across all files:
+- Search for a drug across all organisms:
 
   - `https://amrverse.github.io/AMRrulebrowser/?drug=amikacin`
 
-- Combined search (organism + search):
+- Search for a specific organism and drug:
 
-  - `https://amrverse.github.io/AMRrulebrowser/?organism=Escherichia_coli&drug=amikacin`
+  - `https://amrverse.github.io/AMRrulebrowser/?organism=Escherichia_coli&search=amikacin`
+
+- Search for a gene:
+
+  - `https://amrverse.github.io/AMRrulebrowser/?gene=blaTEM`
+
+- Find a specific rule by ruleID:
+
+  - `https://amrverse.github.io/AMRrulebrowser/?ruleID=ARO0000001`
 
 Notes:
 
 - `?organism=` accepts underscores in place of spaces and is case-insensitive.
-- `?drug=`, `?gene=`, `?rule=` or `?q=` perform searches (query names prefer `drug`, `gene`, `rule`, otherwise `q`).
+- `?drug=`, `?gene=`, `?ruleID=`, `?rule=`, `?search=`, or `?q=` perform searches within the browse results.
+- You can combine `?organism=` with any search parameter to search within a specific organism.
+- The browser always displays in browse mode with an organism selector dropdown, regardless of how you access it.
 - For maximum portability on simple static servers use the query-style links above (path-style links require an SPA-aware server).
+
+## Features
+
+- **Direct organism browsing**: Select organisms from the dropdown to view all rules without forced searching
+- **Multi-parameter search**: Search by drug, gene, ruleID, or any field, optionally filtered to a specific organism
+- **Shareable links**: Construct links with pre-filled searches that others can use
+- **Customizable column visibility**: Use the "Columns to display" button to show/hide columns. By default, the following columns are hidden (can be shown if needed):
+  - `txid` (NCBI taxonomy ID - click organism name for taxonomy link)
+  - `breakpoint condition`
+  - `ARO accession`
+  - `rule curation note`
+- **Help links**: Info icons (ⓘ) next to certain column headers link to detailed specification documentation
+- **Download options**: Export search/browse results as TSV file
+- **Responsive design**: Works on desktop and mobile devices with horizontal scrolling for large tables
