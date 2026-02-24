@@ -22,7 +22,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const browseSearchClearButton = document.getElementById('browseSearchClearButton');
     const resultsHeader = document.getElementById('resultsHeader');
 
-    // --- Constants ---
+    // --- Flags ---
+    let columnsToggleListenerAdded = false;
     const LOCAL_STORAGE_KEY = 'localTxtFileData_v2';
     const GITHUB_REPO = 'AMRverse/AMRrules';
     const GITHUB_BRANCH = 'genome_summary_report_dev';
@@ -284,7 +285,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
         updateUIAfterDataLoad(storedData);
-        handleModeChange(); // Set initial mode and display (e.g., browse all)
 
         // After UI is ready, handle any deep-link in the URL (path or query)
         try {
@@ -292,6 +292,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             console.warn('Error processing initial URL query/path', e);
         }
+
+        handleModeChange(); // Set initial mode and display
     }
 
     function resetUIAfterClear() {
@@ -1380,10 +1382,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!container || !panel || !toggle) return;
 
         // Position panel relative to toggle
-        toggle.addEventListener('click', () => {
-            if (panel.style.display === 'none' || panel.style.display === '') panel.style.display = 'block';
-            else panel.style.display = 'none';
-        });
+        if (!columnsToggleListenerAdded) {
+            toggle.addEventListener('click', () => {
+                if (panel.style.display === 'none' || panel.style.display === '') panel.style.display = 'block';
+                else panel.style.display = 'none';
+            });
+            columnsToggleListenerAdded = true;
+        }
 
         // Close panel when clicking outside
         document.addEventListener('click', (ev) => {
