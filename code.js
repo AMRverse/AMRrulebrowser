@@ -345,7 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 let v = r['organism'] || '';
                 if (typeof v === 'string') {
                     v = v.trim().replace(/^"|"$/g, '');
-                    if (v.startsWith('s__')) v = v.substring(3);
+                    if (v.startsWith('s__') || v.startsWith('g__')) v = v.substring(3);
                     if (normalizeKey(v) === normParam) return key;
                 }
             }
@@ -587,12 +587,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const org = decodeURIComponent(parts.slice(1).join('::'));
             if (storedData[fileKey] && storedData[fileKey].rows) {
                 resultsHeader.textContent = `Browsing: ${org}`;
-                // filter rows for organism, removing s__ prefix and trimming/quotes
+                // filter rows for organism, removing s__ or g__ prefix and trimming/quotes
                 dataToBrowse = storedData[fileKey].rows.filter(r => {
                     let v = r['organism'] || '';
                     if (typeof v !== 'string') v = String(v);
                     v = v.trim().replace(/^"|"$/g, '');
-                    if (v.startsWith('s__')) v = v.substring(3);
+                    if (v.startsWith('s__') || v.startsWith('g__')) v = v.substring(3);
                     return normalizeKey(v) === normalizeKey(org);
                 });
                 if (storedData[fileKey].headers) storedData[fileKey].headers.forEach(h => distinctHeaders.add(h));
@@ -841,7 +841,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     let v = r['organism'] || '';
                     if (typeof v === 'string') {
                         v = v.trim().replace(/^"|"$/g, '');
-                        if (v.startsWith('s__')) v = v.substring(3);
+                        if (v.startsWith('s__') || v.startsWith('g__')) v = v.substring(3);
                         if (v !== '') orgSet.add(v);
                     }
                 });
@@ -956,8 +956,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateLink(headerKey, value, rowData) {
         let sValue = String(value).trim(); // Trim immediately when converting to string
         
-        // Remove "s__" prefix from organism column
-        if (headerKey === 'organism' && sValue.startsWith('s__')) {
+        // Remove "s__" or "g__" prefix from organism column
+        if (headerKey === 'organism' && (sValue.startsWith('s__') || sValue.startsWith('g__'))) {
             sValue = sValue.substring(3);
         }
         
