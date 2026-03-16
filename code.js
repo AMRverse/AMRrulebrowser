@@ -177,15 +177,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error(`GitHub API error: ${response.statusText}`);
             const files = await response.json();
             
-            // Filter for .txt files and build URLs
+            // Filter for .txt, .tsv, .csv files and build URLs
             DEFAULT_FILES = files
-                .filter(file => file.name.endsWith('.txt'))
+                .filter(file => file.name.endsWith('.txt') || file.name.endsWith('.tsv') || file.name.endsWith('.csv'))
                 .map(file => ({
                     name: file.name,
                     url: `${GITHUB_RAW_URL}/${file.name}`
                 }));
             
-            console.log(`Found ${DEFAULT_FILES.length} txt files from GitHub repository`);
+            console.log(`Found ${DEFAULT_FILES.length} tabular files (.txt, .tsv, .csv) from GitHub repository`);
             return DEFAULT_FILES;
         } catch (error) {
             console.error("Error fetching file list from GitHub:", error);
@@ -194,9 +194,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Helper function to format file names (remove .txt and replace _ with space)
+    // Helper function to format file names (remove .txt, .tsv, .csv and replace _ with space)
     function formatFileName(fileName) {
-        return fileName.replace(/\.txt$/, '').replace(/_/g, ' ');
+        return fileName.replace(/\.(txt|tsv|csv)$/i, '').replace(/_/g, ' ');
     }
 
     // --- Event Listeners ---
@@ -261,7 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const response = await fetch(fileObj.url);
                     if (!response.ok) throw new Error(`Failed to fetch ${fileObj.name}: ${response.statusText}`);
                     const content = await response.text();
-                    const parsed = parseTSV(content);
+                    const parsed = parseTabularData(content);
                     storedData[fileObj.name] = {
                         name: fileObj.name,
                         content: content, // Store raw content
@@ -327,10 +327,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Find a file key in storedData matching an organism-like query
     function findFileKeyByOrganismParam(param, storedData) {
         if (!param) return null;
-        const cleaned = String(param).replace(/\.txt$/i, '').replace(/_/g, ' ');
+        const cleaned = String(param).replace(/\.(txt|tsv|csv)$/i, '').replace(/_/g, ' ');
         const normParam = normalizeKey(cleaned);
         for (const key of Object.keys(storedData)) {
-            const base = key.replace(/\.txt$/i, '');
+            const base = key.replace(/\.(txt|tsv|csv)$/i, '');
             const formatted = formatFileName(key);
             if (normalizeKey(base) === normParam) return key;
             if (normalizeKey(formatted) === normParam) return key;
@@ -504,7 +504,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const reader = new FileReader();
             reader.onload = (event) => {
                 const content = event.target.result;
-                const parsed = parseTSV(content);
+                const parsed = parseTabularData(content);
                 
                 existingData[file.name] = {
                     name: file.name,
@@ -670,7 +670,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // file-level selection: set an organism query param so it's linkable
-        const fileBase = selectedValue.replace(/\.txt$/i, '');
+        const fileBase = selectedValue.replace(/\.(txt|tsv|csv)$/i, '');
         const fileForParam = fileBase.replace(/\s+/g, '_');
         let newUrl = base + '?organism=' + encodeURIComponent(fileForParam);
         if (activeTerm) {
@@ -886,15 +886,24 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function parseTSV(content) {
+    function parseTabularData(content) {
         const lines = content.split('\n');
         let headerLineIndex = -1;
         let headers = [];
+        let delimiter = '\t'; // default to tab
+
+        // Function to detect delimiter based on header line
+        function detectDelimiter(line) {
+            const tabCount = (line.match(/\t/g) || []).length;
+            const commaCount = (line.match(/,/g) || []).length;
+            return tabCount >= commaCount ? '\t' : ',';
+        }
 
         for (let i = 0; i < lines.length; i++) {
             if (lines[i].trim() !== '') {
+                delimiter = detectDelimiter(lines[i]);
                 headerLineIndex = i;
-                headers = lines[i].split('\t').map(h => h.trim());
+                headers = lines[i].split(delimiter).map(h => h.trim());
                 break;
             }
         }
@@ -902,7 +911,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const dataRows = lines.slice(headerLineIndex + 1);
         const rows = dataRows.map(line => {
-            const values = line.split('\t');
+            const values = line.split(delimiter);
             const rowObject = {};
             headers.forEach((header, index) => {
                 // Comprehensive trimming to remove all leading/trailing whitespace
