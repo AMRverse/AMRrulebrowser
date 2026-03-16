@@ -256,28 +256,58 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (defaultFilesToFetch.length > 0) {
             resultsCountDiv.textContent = `Loading ${defaultFilesToFetch.length} default file(s) from GitHub...`;
-            try {
-                await Promise.all(defaultFilesToFetch.map(async (fileObj) => {
-                    const response = await fetch(fileObj.url);
-                    if (!response.ok) throw new Error(`Failed to fetch ${fileObj.name}: ${response.statusText}`);
-                    const content = await response.text();
-                    const parsed = parseTabularData(content);
+            const results = await Promise.allSettled(defaultFilesToFetch.map(async (fileObj) => {
+                const response = await fetch(fileObj.url);
+                if (!response.ok) throw new Error(`Failed to fetch ${fileObj.name}: ${response.statusText}`);
+                const content = await response.text();
+                const parsed = parseTabularData(content);
+                return { fileObj, content, parsed };
+            }));
+
+            let loadedCount = 0;
+            const failedFiles = [];
+            for (const result of results) {
+                if (result.status === 'fulfilled') {
+                    const { fileObj, content, parsed } = result.value;
                     storedData[fileObj.name] = {
                         name: fileObj.name,
-                        content: content, // Store raw content
+                        content: content,
                         headerLineIndex: parsed.headerLineIndex,
                         headers: parsed.headers,
                         rows: parsed.rows,
                         type: 'text/plain',
-                        lastModified: new Date().toLocaleDateString() // Placeholder
+                        lastModified: new Date().toLocaleDateString()
                     };
-                }));
-                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(storedData));
-                resultsCountDiv.textContent = `Loaded ${defaultFilesToFetch.length} file(s) from GitHub. ${defaultFileNamesInStorage.length > 0 ? (defaultFileNamesInStorage.length + ' previously loaded files also available.') : ''}`;
-            } catch (error) {
-                console.error("Error loading default files from GitHub:", error);
-                alert("Could not load some files from GitHub. Check console for details.");
-                resultsCountDiv.textContent = "Error loading files from GitHub.";
+                    loadedCount++;
+                } else {
+                    console.error("Failed to load file:", result.reason);
+                    failedFiles.push(result.reason?.message || 'Unknown file');
+                }
+            }
+
+            if (loadedCount > 0) {
+                try {
+                    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(storedData));
+                } catch (storageError) {
+                    // localStorage quota exceeded — drop raw content and retry
+                    console.warn("localStorage quota exceeded, storing without raw content:", storageError);
+                    for (const key of Object.keys(storedData)) {
+                        delete storedData[key].content;
+                    }
+                    try {
+                        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(storedData));
+                    } catch (e) {
+                        console.error("Still cannot save to localStorage:", e);
+                    }
+                }
+            }
+
+            if (failedFiles.length === 0) {
+                resultsCountDiv.textContent = `Loaded ${loadedCount} file(s) from GitHub. ${defaultFileNamesInStorage.length > 0 ? (defaultFileNamesInStorage.length + ' previously loaded files also available.') : ''}`;
+            } else if (loadedCount > 0) {
+                resultsCountDiv.textContent = `Loaded ${loadedCount} file(s) from GitHub. ${failedFiles.length} file(s) could not be loaded.`;
+            } else {
+                resultsCountDiv.textContent = "Error: Could not load files from GitHub. Please try refreshing.";
             }
         } else if (Object.keys(storedData).length > 0) {
              resultsCountDiv.textContent = "Loaded data from previous session.";
