@@ -211,7 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     clearButton.addEventListener('click', () => {
         if (confirm('Are you sure you want to clear all loaded data (including defaults)? This will remove them from your browser\'s local storage for this page.')) {
-            localStorage.removeItem(LOCAL_STORAGE_KEY);
+            sessionStorage.removeItem(LOCAL_STORAGE_KEY);
             resetUIAfterClear();
             alert('All data cleared. Default files will need to be re-fetched if you refresh or can be re-loaded manually if needed.');
         }
@@ -237,7 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Core Functions ---
     async function initializeApplication() {
-        let storedData = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY)) || {};
+        let storedData = JSON.parse(sessionStorage.getItem(LOCAL_STORAGE_KEY)) || {};
         
         // First, fetch the list of available files from GitHub
         resultsCountDiv.textContent = `Fetching file list from GitHub repository...`;
@@ -287,17 +287,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (loadedCount > 0) {
                 try {
-                    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(storedData));
+                    sessionStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(storedData));
                 } catch (storageError) {
-                    // localStorage quota exceeded — drop raw content and retry
-                    console.warn("localStorage quota exceeded, storing without raw content:", storageError);
+                    // sessionStorage quota exceeded — drop raw content and retry
+                    console.warn("sessionStorage quota exceeded, storing without raw content:", storageError);
                     for (const key of Object.keys(storedData)) {
                         delete storedData[key].content;
                     }
                     try {
-                        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(storedData));
+                        sessionStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(storedData));
                     } catch (e) {
-                        console.error("Still cannot save to localStorage:", e);
+                        console.error("Still cannot save to sessionStorage:", e);
                     }
                 }
             }
@@ -526,7 +526,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function handleFileUploads(files) {
-        let existingData = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY)) || {};
+        let existingData = JSON.parse(sessionStorage.getItem(LOCAL_STORAGE_KEY)) || {};
         let filesProcessed = 0;
         const totalFiles = files.length;
 
@@ -547,7 +547,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
                 filesProcessed++;
                 if (filesProcessed === totalFiles) {
-                    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(existingData));
+                    sessionStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(existingData));
                     updateUIAfterDataLoad(existingData);
                     alert(`${totalFiles} file(s) processed and stored.`);
                     fileInput.value = ''; // Reset file input
@@ -560,7 +560,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert(`Error reading file: ${file.name}`);
                 filesProcessed++;
                  if (filesProcessed === totalFiles) {
-                    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(existingData)); // Save what was processed
+                    sessionStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(existingData)); // Save what was processed
                     updateUIAfterDataLoad(existingData);
                 }
             };
@@ -590,7 +590,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function triggerBrowse() {
         const selectedFileName = browseFileSelect.value;
-        const storedData = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY)) || {};
+        const storedData = JSON.parse(sessionStorage.getItem(LOCAL_STORAGE_KEY)) || {};
         let dataToBrowse = [];
         let distinctHeaders = new Set();
 
@@ -776,7 +776,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const storedData = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY));
+        const storedData = JSON.parse(sessionStorage.getItem(LOCAL_STORAGE_KEY));
         if (!storedData || Object.keys(storedData).length === 0) {
             alert('No files loaded to search.');
             return;
@@ -861,7 +861,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateBrowseFileDropdown(fileNames) {
         browseFileSelect.innerHTML = '<option value="all">All organisms</option>';
-        const storedData = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY)) || {};
+        const storedData = JSON.parse(sessionStorage.getItem(LOCAL_STORAGE_KEY)) || {};
         fileNames.forEach(name => {
             const fileData = storedData[name];
             // If file has an 'organism' header and multiple distinct organisms, show organism-level options
@@ -1377,7 +1377,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (rowsData.length === 0 && browseModeRadio.checked) {
-             resultsCountDiv.textContent = `Displaying 0 rows. ${ (browseFileSelect.value !== 'all' && Object.keys(JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY)) || {}).length > 0) ? 'Selected file might be empty or header-only.' : ''}`;
+             resultsCountDiv.textContent = `Displaying 0 rows. ${ (browseFileSelect.value !== 'all' && Object.keys(JSON.parse(sessionStorage.getItem(LOCAL_STORAGE_KEY)) || {}).length > 0) ? 'Selected file might be empty or header-only.' : ''}`;
         } else if (rowsData.length === 0 && searchModeRadio.checked) {
             resultsCountDiv.textContent = "Found 0 match(es)."
             // No specific message here, performSearch handles it
@@ -1396,7 +1396,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function getHiddenColumnsFromStorage() {
         try {
-            const raw = localStorage.getItem(COLUMN_PREF_KEY);
+            const raw = sessionStorage.getItem(COLUMN_PREF_KEY);
             if (!raw) return new Set(DEFAULT_HIDDEN_COLUMNS);
             const arr = JSON.parse(raw);
             return new Set(arr);
@@ -1408,7 +1408,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function saveHiddenColumnsToStorage(setOfKeys) {
         try {
             const arr = Array.from(setOfKeys);
-            localStorage.setItem(COLUMN_PREF_KEY, JSON.stringify(arr));
+            sessionStorage.setItem(COLUMN_PREF_KEY, JSON.stringify(arr));
         } catch (e) {
             console.warn('Could not save column prefs', e);
         }
