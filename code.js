@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let columnsToggleListenerAdded = false;
     const LOCAL_STORAGE_KEY = 'localTxtFileData_v2';
     const GITHUB_REPO = 'AMRverse/AMRrules';
-    const GITHUB_BRANCH = 'genome_summary_report_dev';
+    const GITHUB_BRANCH = 'main';
     const GITHUB_RULES_PATH = 'rules';
     const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_RULES_PATH}?ref=${GITHUB_BRANCH}`;
     const GITHUB_RAW_URL = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/${GITHUB_RULES_PATH}`;
