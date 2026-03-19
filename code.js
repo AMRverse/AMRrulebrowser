@@ -647,7 +647,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sortColumnKey = ''; // Reset sort when browsing new data
         sortDirection = 'asc';
         sortAndDisplayData();
-        resultsCountDiv.textContent = `Displaying ${dataToBrowse.length} row(s).`;
+        resultsCountDiv.textContent = `Displaying ${dataToBrowse.length} data row(s).`;
         toggleDownloadButtons(dataToBrowse.length > 0);
 
         // Update URL to reflect current browse selection
@@ -1377,7 +1377,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (rowsData.length === 0 && browseModeRadio.checked) {
-             resultsCountDiv.textContent = `Displaying 0 rows. ${ (browseFileSelect.value !== 'all' && Object.keys(JSON.parse(sessionStorage.getItem(LOCAL_STORAGE_KEY)) || {}).length > 0) ? 'Selected file might be empty or header-only.' : ''}`;
+             resultsCountDiv.textContent = `Displaying 0 data rows. ${ (browseFileSelect.value !== 'all' && Object.keys(JSON.parse(sessionStorage.getItem(LOCAL_STORAGE_KEY)) || {}).length > 0) ? 'Selected file might be empty or header-only.' : ''}`;
         } else if (rowsData.length === 0 && searchModeRadio.checked) {
             resultsCountDiv.textContent = "Found 0 match(es)."
             // No specific message here, performSearch handles it
