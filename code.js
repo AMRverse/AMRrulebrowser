@@ -128,7 +128,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // Try loading from GitHub first
             const response = await fetch('https://raw.githubusercontent.com/amrverse/AMRrulebrowser/main/card_drug_names.tsv');
-            if (!response.ok) throw new Error(`Failed to fetch CARD mapping: ${response.statusText}`);
+            if (!response.ok) {
+                diagnoseGitHubError(response, null);
+                throw new Error(`Failed to fetch CARD mapping: ${response.statusText}`);
+            }
             const content = await response.text();
             
             const lines = content.split('\n');
@@ -171,10 +174,74 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
+    function diagnoseGitHubError(response, error) {
+        const info = {
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent,
+            online: navigator.onLine
+        };
+
+        if (!navigator.onLine) {
+            info.diagnosis = 'NO_INTERNET';
+            info.userMessage = 'You appear to be offline. Please check your internet connection and refresh.';
+        } else if (error && (error.name === 'TypeError' || error.message === 'Failed to fetch')) {
+            info.diagnosis = 'NETWORK_OR_CORS';
+            info.userMessage = 'Network error: Could not connect to GitHub. This may be caused by a firewall, VPN, proxy, or browser extension blocking the request.';
+        } else if (response) {
+            info.status = response.status;
+            info.statusText = response.statusText;
+            const rateLimit = response.headers.get('X-RateLimit-Limit');
+            const rateRemaining = response.headers.get('X-RateLimit-Remaining');
+            const rateReset = response.headers.get('X-RateLimit-Reset');
+            if (rateLimit) info.rateLimit = rateLimit;
+            if (rateRemaining) info.rateRemaining = rateRemaining;
+            if (rateReset) info.rateResetTime = new Date(parseInt(rateReset) * 1000).toLocaleTimeString();
+
+            if (response.status === 403 && rateRemaining === '0') {
+                info.diagnosis = 'RATE_LIMITED';
+                info.userMessage = `GitHub API rate limit exceeded (${rateLimit} requests/hour for unauthenticated users). Please try again after ${info.rateResetTime}.`;
+            } else if (response.status === 403) {
+                info.diagnosis = 'FORBIDDEN';
+                info.userMessage = 'Access to GitHub API is forbidden (HTTP 403). This could be a rate limit, IP block, or firewall issue.';
+            } else if (response.status === 404) {
+                info.diagnosis = 'NOT_FOUND';
+                info.userMessage = 'GitHub repository or branch not found (HTTP 404). The data source may have moved.';
+            } else if (response.status >= 500) {
+                info.diagnosis = 'GITHUB_SERVER_ERROR';
+                info.userMessage = `GitHub is experiencing issues (HTTP ${response.status}). Please try again later.`;
+            } else {
+                info.diagnosis = 'HTTP_ERROR';
+                info.userMessage = `Unexpected error from GitHub (HTTP ${response.status}: ${response.statusText}).`;
+            }
+        } else if (error) {
+            info.diagnosis = 'UNKNOWN';
+            info.errorName = error.name;
+            info.errorMessage = error.message;
+            info.userMessage = `Unexpected error: ${error.message}. Please check the browser console (F12) for details.`;
+        }
+
+        console.group('%c[AMRrules Browser] GitHub Fetch Diagnostic', 'color: red; font-weight: bold');
+        console.log('Diagnosis:', info.diagnosis);
+        console.log('User Agent:', info.userAgent);
+        console.log('Online:', info.online);
+        if (info.status) console.log('HTTP Status:', info.status, info.statusText);
+        if (info.rateLimit) console.log('Rate Limit:', `${info.rateRemaining}/${info.rateLimit} remaining, resets at ${info.rateResetTime}`);
+        if (info.errorMessage) console.log('Error:', info.errorMessage);
+        console.log('Timestamp:', info.timestamp);
+        console.groupEnd();
+
+        return info;
+    }
+
     async function fetchDefaultFilesFromGitHub() {
+        let response;
         try {
-            const response = await fetch(GITHUB_API_URL);
-            if (!response.ok) throw new Error(`GitHub API error: ${response.statusText}`);
+            response = await fetch(GITHUB_API_URL);
+            if (!response.ok) {
+                const diag = diagnoseGitHubError(response, null);
+                resultsCountDiv.textContent = diag.userMessage;
+                return [];
+            }
             const files = await response.json();
             
             // Filter for .txt, .tsv, .csv files and build URLs
@@ -188,8 +255,8 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`Found ${DEFAULT_FILES.length} tabular files (.txt, .tsv, .csv) from GitHub repository`);
             return DEFAULT_FILES;
         } catch (error) {
-            console.error("Error fetching file list from GitHub:", error);
-            alert("Could not fetch file list from GitHub repository. Check console for details.");
+            const diag = diagnoseGitHubError(response, error);
+            resultsCountDiv.textContent = diag.userMessage;
             return [];
         }
     }
@@ -258,7 +325,10 @@ document.addEventListener('DOMContentLoaded', () => {
             resultsCountDiv.textContent = `Loading ${defaultFilesToFetch.length} default file(s) from GitHub...`;
             const results = await Promise.allSettled(defaultFilesToFetch.map(async (fileObj) => {
                 const response = await fetch(fileObj.url);
-                if (!response.ok) throw new Error(`Failed to fetch ${fileObj.name}: ${response.statusText}`);
+                if (!response.ok) {
+                    const diag = diagnoseGitHubError(response, null);
+                    throw new Error(`${fileObj.name}: ${diag.userMessage}`);
+                }
                 const content = await response.text();
                 const parsed = parseTabularData(content);
                 return { fileObj, content, parsed };
