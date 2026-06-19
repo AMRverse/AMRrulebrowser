@@ -125,15 +125,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     async function fetchAndParseCardMapping() {
+        // Prefer the copy served alongside the page (same origin), so the mapping
+        // matches the deployed branch and avoids raw.githubusercontent rate limits
+        // and caching. Fall back to the GitHub raw copy if the local one is missing.
+        const RAW_FALLBACK_URL = 'https://raw.githubusercontent.com/amrverse/AMRrulebrowser/main/card_drug_names.tsv';
         try {
-            // Try loading from GitHub first
-            const response = await fetch('https://raw.githubusercontent.com/amrverse/AMRrulebrowser/main/card_drug_names.tsv');
-            if (!response.ok) {
-                diagnoseGitHubError(response, null);
-                throw new Error(`Failed to fetch CARD mapping: ${response.statusText}`);
+            let content;
+            try {
+                const localResponse = await fetch('card_drug_names.tsv');
+                if (!localResponse.ok) {
+                    throw new Error(`Local CARD mapping not available: ${localResponse.statusText}`);
+                }
+                content = await localResponse.text();
+            } catch (localError) {
+                console.warn("Falling back to GitHub raw for CARD mapping:", localError.message);
+                const response = await fetch(RAW_FALLBACK_URL);
+                if (!response.ok) {
+                    diagnoseGitHubError(response, null);
+                    throw new Error(`Failed to fetch CARD mapping: ${response.statusText}`);
+                }
+                content = await response.text();
             }
-            const content = await response.text();
-            
+
             const lines = content.split('\n');
             let drugCount = 0;
             let classCount = 0;
@@ -174,7 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             console.log(`Loaded ${drugCount} drug entries and ${classCount} class entries from CARD mapping`);
         } catch (error) {
-            console.error("Error loading CARD drug/class mapping from GitHub:", error);
+            console.error("Error loading CARD drug/class mapping:", error);
             // Continue without the mappings - links won't be created for drugs and classes
         }
     }
