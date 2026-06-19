@@ -144,25 +144,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const parts = line.split('\t');
                 if (parts.length < 3) return;
-                
+
                 const aroId = parts[0].trim();
                 if (aroId === '-' || !aroId) return; // Skip entries without ARO ID
-                
+
                 const aroNumber = aroId.replace('ARO:', '');
                 const drugName = parts[1].trim();
                 const className = parts[2].trim();
-                
+                // Column 4 holds the class's own ARO accession. The accession in
+                // column 1 belongs to the drug (column 2), not the class, so the
+                // class must be mapped via its own accession to link correctly.
+                const classAroId = parts.length > 3 ? parts[3].trim() : '';
+                const classAroNumber = classAroId.replace('ARO:', '');
+
                 // If it's a drug entry
                 if (drugName && drugName !== '-') {
                     const normalizedDrug = normalizeKey(drugName);
                     DRUG_ARO_MAP[normalizedDrug] = aroNumber;
                     drugCount++;
                 }
-                
+
                 // If it's a class entry
-                if (className && className !== '-') {
+                if (className && className !== '-' && classAroNumber && classAroNumber !== '-') {
                     const normalizedClass = normalizeKey(className);
-                    CLASS_ARO_MAP[normalizedClass] = aroNumber;
+                    CLASS_ARO_MAP[normalizedClass] = classAroNumber;
                     classCount++;
                 }
             });
