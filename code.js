@@ -125,15 +125,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     async function fetchAndParseCardMapping() {
+        // Prefer the copy served alongside the page (same origin), so the mapping
+        // matches the deployed branch and avoids raw.githubusercontent rate limits
+        // and caching. Fall back to the GitHub raw copy if the local one is missing.
+        const RAW_FALLBACK_URL = 'https://raw.githubusercontent.com/amrverse/AMRrulebrowser/main/card_drug_names.tsv';
         try {
-            // Try loading from GitHub first
-            const response = await fetch('https://raw.githubusercontent.com/amrverse/AMRrulebrowser/main/card_drug_names.tsv');
-            if (!response.ok) {
-                diagnoseGitHubError(response, null);
-                throw new Error(`Failed to fetch CARD mapping: ${response.statusText}`);
+            let content;
+            try {
+                const localResponse = await fetch('card_drug_names.tsv');
+                if (!localResponse.ok) {
+                    throw new Error(`Local CARD mapping not available: ${localResponse.statusText}`);
+                }
+                content = await localResponse.text();
+            } catch (localError) {
+                console.warn("Falling back to GitHub raw for CARD mapping:", localError.message);
+                const response = await fetch(RAW_FALLBACK_URL);
+                if (!response.ok) {
+                    diagnoseGitHubError(response, null);
+                    throw new Error(`Failed to fetch CARD mapping: ${response.statusText}`);
+                }
+                content = await response.text();
             }
-            const content = await response.text();
-            
+
             const lines = content.split('\n');
             let drugCount = 0;
             let classCount = 0;
@@ -144,32 +157,37 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const parts = line.split('\t');
                 if (parts.length < 3) return;
-                
+
                 const aroId = parts[0].trim();
                 if (aroId === '-' || !aroId) return; // Skip entries without ARO ID
-                
+
                 const aroNumber = aroId.replace('ARO:', '');
                 const drugName = parts[1].trim();
                 const className = parts[2].trim();
-                
+                // Column 4 holds the class's own ARO accession. The accession in
+                // column 1 belongs to the drug (column 2), not the class, so the
+                // class must be mapped via its own accession to link correctly.
+                const classAroId = parts.length > 3 ? parts[3].trim() : '';
+                const classAroNumber = classAroId.replace('ARO:', '');
+
                 // If it's a drug entry
                 if (drugName && drugName !== '-') {
                     const normalizedDrug = normalizeKey(drugName);
                     DRUG_ARO_MAP[normalizedDrug] = aroNumber;
                     drugCount++;
                 }
-                
+
                 // If it's a class entry
-                if (className && className !== '-') {
+                if (className && className !== '-' && classAroNumber && classAroNumber !== '-') {
                     const normalizedClass = normalizeKey(className);
-                    CLASS_ARO_MAP[normalizedClass] = aroNumber;
+                    CLASS_ARO_MAP[normalizedClass] = classAroNumber;
                     classCount++;
                 }
             });
             
             console.log(`Loaded ${drugCount} drug entries and ${classCount} class entries from CARD mapping`);
         } catch (error) {
-            console.error("Error loading CARD drug/class mapping from GitHub:", error);
+            console.error("Error loading CARD drug/class mapping:", error);
             // Continue without the mappings - links won't be created for drugs and classes
         }
     }
