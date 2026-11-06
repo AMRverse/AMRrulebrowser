@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Flags ---
     let columnsToggleListenerAdded = false;
     const LOCAL_STORAGE_KEY = 'localTxtFileData_v2';
-    const GITHUB_REPO = 'AMRverse/AMRrules';
+    const GITHUB_REPO = 'AMRverse/AMRrulesDB';
     const GITHUB_BRANCH = 'main';
     const GITHUB_RULES_PATH = 'rules';
     const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_RULES_PATH}?ref=${GITHUB_BRANCH}`;
