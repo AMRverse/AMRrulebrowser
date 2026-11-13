@@ -1073,11 +1073,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Mapping of column headers to spec documentation URLs for the info icon
     const INFO_LINKS = {
-        'variation type': 'https://amrrules.readthedocs.io/en/genome_summary_report_dev/specification.html#variation-type',
-        'evidence code': 'https://amrrules.readthedocs.io/en/genome_summary_report_dev/specification.html#evidence-codes',
-        'mutation': 'https://amrrules.readthedocs.io/en/genome_summary_report_dev/specification.html#syntax-for-mutations',
-        'evidence grade': 'https://amrrules.readthedocs.io/en/genome_summary_report_dev/specification.html#evidence-grade',
-        'evidence limitations': 'https://amrrules.readthedocs.io/en/genome_summary_report_dev/specification.html#evidence-limitations'
+        'variation type': 'https://amrrules.readthedocs.io/en/latest/specification.html#variation-type',
+        'evidence code': 'https://amrrules.readthedocs.io/en/latest/specification.html#evidence-codes',
+        'mutation': 'https://amrrules.readthedocs.io/en/latest/specification.html#syntax-for-mutations',
+        'evidence grade': 'https://amrrules.readthedocs.io/en/latest/specification.html#evidence-grade',
+        'evidence limitations': 'https://amrrules.readthedocs.io/en/latest/specification.html#evidence-limitations'
     };
 
     function generateLink(headerKey, value, rowData) {
